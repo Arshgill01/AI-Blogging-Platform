@@ -62,35 +62,3 @@ class SEOReport(db.Model):
     post = db.relationship("Post", back_populates="seo_reports")
 
     __table_args__ = (UniqueConstraint("post_id", "created_at", name="uq_seo_report_post_created"),)
-
-
-def seed_demo_content():
-    if Post.query.first():
-        return
-
-    demo_posts = [
-        Post(
-            title="Building a Self-Contained Content Engine",
-            content=(
-                "A strong blogging platform starts with a clean content model. "
-                "This seed post exists so the homepage and detail pages have meaningful data "
-                "before richer demo content is added in later waves."
-            ),
-            category="Platform",
-            tags="architecture,content,mvp",
-            meta_description="Why a self-contained content engine makes the MVP easier to extend.",
-        ),
-        Post(
-            title="Why Explainable Features Matter in an MVP",
-            content=(
-                "Explainable ranking and analysis features are easier to debug, demo, and improve. "
-                "For this project that means readable heuristics, traceable data models, and simple flows."
-            ),
-            category="Product",
-            tags="mvp,seo,recommendations",
-            meta_description="Simple, explainable product intelligence is the right tradeoff for this MVP.",
-        ),
-    ]
-
-    db.session.add_all(demo_posts)
-    db.session.commit()

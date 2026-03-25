@@ -24,6 +24,8 @@ def create_app(test_config=None):
 
     db.init_app(app)
 
+    from app.seed import load_seed_data, register_seed_commands
+
     from app.routes.analytics import analytics_bp
     from app.routes.main import main_bp
     from app.routes.posts import posts_bp
@@ -31,11 +33,12 @@ def create_app(test_config=None):
     app.register_blueprint(main_bp)
     app.register_blueprint(posts_bp)
     app.register_blueprint(analytics_bp)
+    register_seed_commands(app)
 
     with app.app_context():
         from app import models
 
         db.create_all()
-        models.seed_demo_content()
+        load_seed_data()
 
     return app
