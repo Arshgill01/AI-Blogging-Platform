@@ -1,0 +1,113 @@
+{% if analysis %}
+  <section class="card border-0 shadow-sm seo-report">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center gap-3 mb-3 seo-report__header">
+        <div>
+          <p class="text-uppercase text-muted fw-semibold small mb-2">SEO Analysis</p>
+          <h2 class="h3 mb-0">Author feedback</h2>
+        </div>
+        <div class="seo-score">
+          <span class="seo-score__value">{{ analysis.seo_score|round|int }}</span>
+          <span class="seo-score__label">/ 100</span>
+        </div>
+      </div>
+
+      <div class="seo-metrics mb-4">
+        <div class="seo-metric">
+          <span class="seo-metric__label">Word count</span>
+          <strong>{{ analysis.word_count }}</strong>
+        </div>
+        <div class="seo-metric">
+          <span class="seo-metric__label">Readability</span>
+          <strong>{{ analysis.readability_score }}</strong>
+        </div>
+        <div class="seo-metric">
+          <span class="seo-metric__label">Reading time</span>
+          <strong>{{ analysis.reading_time_minutes or 0 }} min</strong>
+        </div>
+        <div class="seo-metric">
+          <span class="seo-metric__label">Primary keyword</span>
+          <strong>{{ analysis.primary_keyword or "Not detected" }}</strong>
+        </div>
+        <div class="seo-metric">
+          <span class="seo-metric__label">Headings</span>
+          <strong>{{ analysis.heading_count if analysis.heading_count is not none else (1 if analysis.has_headings else 0) }}</strong>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12 col-md-6">
+          <div class="seo-panel">
+            <h3 class="h4 mb-3">Suggestions</h3>
+            {% if analysis.suggestions %}
+              <ul class="seo-list">
+                {% for suggestion in analysis.suggestions %}
+                  <li>{{ suggestion }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="text-muted mb-0">No major action items right now.</p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="seo-panel">
+            <h3 class="h4 mb-3">Warnings</h3>
+            {% if analysis.warnings %}
+              <ul class="seo-list seo-list--warning">
+                {% for warning in analysis.warnings %}
+                  <li>{{ warning }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="text-muted mb-0">No major warnings detected.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12 col-md-6">
+          <div class="seo-panel">
+            <h3 class="h4 mb-3">Keyword candidates</h3>
+            {% if analysis.keyword_candidates %}
+              <div class="seo-tags">
+                {% for keyword in analysis.keyword_candidates %}
+                  <span class="seo-tag">
+                    {{ keyword.term }}
+                    {% if keyword.count %}
+                      <small>{{ keyword.count }}</small>
+                    {% endif %}
+                  </span>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p class="text-muted mb-0">Add more topic-specific language to surface keywords.</p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="seo-panel">
+            <h3 class="h4 mb-3">Checks</h3>
+            {% if analysis.checks %}
+              <ul class="seo-checks">
+                {% for check in analysis.checks %}
+                  <li class="seo-check seo-check--{{ check.status }}">
+                    <strong>{{ check.label }}</strong>
+                    <span>{{ check.detail }}</span>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="text-muted mb-0">Run a fresh analysis to see rule-level checks.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if analysis.created_at %}
+        <p class="small text-muted mb-0">Latest analysis: {{ analysis.created_at.strftime('%b %d, %Y %H:%M') }}</p>
+      {% endif %}
+    </div>
+  </section>
+{% endif %}
