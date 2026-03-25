@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}{{ form_title }} | AI Blogging Platform{% endblock %}
+
+{% block content %}
+  <div class="mx-auto" style="max-width: 820px;">
+    <div class="mb-4">
+      <p class="text-uppercase text-muted fw-semibold small mb-2">Author View</p>
+      <h1 class="h2 mb-2">{{ form_title }}</h1>
+      <p class="text-muted mb-0">This scaffold supports later SEO and internal-link workflows without coupling them into the foundation wave.</p>
+    </div>
+
+    <form method="post" class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <div class="mb-3">
+          <label class="form-label" for="title">Title</label>
+          <input class="form-control" id="title" name="title" required value="{{ post.title if post else '' }}">
+        </div>
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label" for="category">Category</label>
+            <input class="form-control" id="category" name="category" value="{{ post.category if post else '' }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="tags">Tags</label>
+            <input class="form-control" id="tags" name="tags" placeholder="seo, content, flask" value="{{ post.tags if post else '' }}">
+          </div>
+        </div>
+
+        <div class="mt-3 mb-3">
+          <label class="form-label" for="meta_description">Meta description</label>
+          <textarea class="form-control" id="meta_description" name="meta_description" rows="3">{{ post.meta_description if post else '' }}</textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="content">Content</label>
+          <textarea class="form-control" id="content" name="content" rows="12" required>{{ post.content if post else '' }}</textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" type="submit">Save Post</button>
+          <a class="btn btn-outline-secondary" href="{{ url_for('main.home') }}">Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+{% endblock %}
