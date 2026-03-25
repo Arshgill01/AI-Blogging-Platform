@@ -1,4 +1,5 @@
 import json
+import math
 import re
 from collections import Counter
 
@@ -7,544 +8,332 @@ from app.models import SEOReport
 
 try:
     import textstat
-except ImportError:  # pragma: no cover - fallback path is intentionally supported
+except ImportError:  # pragma: no cover - optional dependency
     textstat = None
 
 
-STOP_WORDS = {
-    "a",
+STOPWORDS = {
     "about",
     "after",
-    "all",
+    "again",
     "also",
-    "an",
-    "and",
-    "are",
-    "as",
-    "at",
-    "be",
     "because",
-    "been",
     "before",
+    "being",
     "between",
     "both",
-    "but",
-    "by",
-    "can",
     "could",
-    "did",
-    "do",
     "does",
-    "for",
+    "each",
+    "every",
     "from",
-    "had",
-    "has",
     "have",
-    "how",
-    "if",
-    "in",
     "into",
-    "is",
-    "it",
-    "its",
     "just",
     "like",
-    "make",
     "more",
     "most",
-    "need",
-    "not",
-    "of",
-    "often",
-    "on",
-    "or",
-    "our",
-    "out",
-    "page",
-    "post",
-    "posts",
-    "search",
+    "much",
+    "only",
+    "other",
+    "over",
+    "same",
     "should",
-    "site",
-    "small",
-    "so",
     "some",
     "such",
+    "than",
     "that",
-    "the",
     "their",
     "them",
     "then",
     "there",
+    "these",
     "they",
     "this",
-    "to",
-    "too",
-    "use",
-    "useful",
-    "using",
+    "those",
+    "through",
     "very",
-    "was",
-    "way",
-    "we",
-    "well",
     "what",
     "when",
-    "whether",
+    "where",
     "which",
     "while",
-    "will",
     "with",
-    "without",
-    "work",
-    "writer",
-    "writers",
-    "writing",
-    "you",
+    "would",
     "your",
 }
 
-WORD_PATTERN = re.compile(r"[A-Za-z][A-Za-z'-]+")
-HTML_HEADING_PATTERN = re.compile(r"<h([1-6])\b[^>]*>(.*?)</h\1>", re.IGNORECASE | re.DOTALL)
-MARKDOWN_HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
-
-
-def _clamp(value, minimum, maximum):
-    return max(minimum, min(maximum, value))
-
-
-def _clean_text(value):
-    return (value or "").strip()
+WORD_RE = re.compile(r"[A-Za-z][A-Za-z'-]+")
+HTML_HEADING_RE = re.compile(r"<h[1-6][^>]*>.*?</h[1-6]>", re.IGNORECASE | re.DOTALL)
 
 
 def _tokenize(text):
-    return [token.lower() for token in WORD_PATTERN.findall(text)]
+    return [match.group(0).lower() for match in WORD_RE.finditer(text or "")]
 
 
-def _split_sentences(text):
-    stripped = _clean_text(text)
-    if not stripped:
-        return []
-
-    parts = re.split(r"(?<=[.!?])\s+", stripped)
-    return [part.strip() for part in parts if part.strip()]
+def _count_sentences(text):
+    sentences = re.findall(r"[.!?]+(?:\s|$)", text or "")
+    return max(len(sentences), 1)
 
 
-def _split_paragraphs(text):
-    return [paragraph.strip() for paragraph in re.split(r"\n\s*\n", text or "") if paragraph.strip()]
+def _normalize_keyword(token):
+    token = token.lower().strip("-'")
+    if len(token) > 4:
+        for suffix in ("ingly", "edly", "ing", "ed", "es", "s"):
+            if token.endswith(suffix) and len(token) - len(suffix) >= 4:
+                token = token[: -len(suffix)]
+                break
+    return token
 
 
-def _estimate_syllables(word):
-    token = re.sub(r"[^a-z]", "", word.lower())
-    if not token:
-        return 0
+def _heading_lines(text):
+    lines = []
+    for raw_line in (text or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
 
-    groups = re.findall(r"[aeiouy]+", token)
+        if re.match(r"^\s{0,3}#{1,6}\s+\S+", raw_line):
+            lines.append(line.lstrip("# ").strip())
+            continue
+
+        if re.match(r"^(?:[A-Z][A-Za-z0-9/&(),:' -]{2,80})$", line) and len(line.split()) <= 10:
+            if not line.endswith((".", "!", "?")):
+                lines.append(line)
+                continue
+
+        if line.endswith(":") and 1 <= len(line.split()) <= 8:
+            lines.append(line.rstrip(":"))
+
+    for html_heading in HTML_HEADING_RE.findall(text or ""):
+        cleaned = re.sub(r"<[^>]+>", "", html_heading).strip()
+        if cleaned:
+            lines.append(cleaned)
+
+    return lines
+
+
+def _count_syllables(word):
+    cleaned = re.sub(r"[^a-z]", "", word.lower())
+    if not cleaned:
+        return 1
+
+    groups = re.findall(r"[aeiouy]+", cleaned)
     syllables = len(groups)
-    if token.endswith("e") and syllables > 1:
+
+    if cleaned.endswith("e") and syllables > 1:
         syllables -= 1
-    return max(1, syllables)
+    if cleaned.endswith("le") and len(cleaned) > 2 and cleaned[-3] not in "aeiouy":
+        syllables += 1
+
+    return max(syllables, 1)
 
 
-def _fallback_flesch_reading_ease(text):
-    words = _tokenize(text)
-    sentences = _split_sentences(text)
-    if not words or not sentences:
-        return None
+def _readability_score(text, words, sentence_count):
+    if not words:
+        return 0.0
+    if textstat is not None:
+        try:
+            return round(max(min(float(textstat.flesch_reading_ease(text)), 100.0), 0.0), 1)
+        except Exception:  # pragma: no cover - defensive fallback
+            pass
 
-    syllable_count = sum(_estimate_syllables(word) for word in words)
-    words_per_sentence = len(words) / len(sentences)
-    syllables_per_word = syllable_count / len(words)
-    return round(206.835 - (1.015 * words_per_sentence) - (84.6 * syllables_per_word), 2)
+    syllable_count = sum(_count_syllables(word) for word in words)
+    score = 206.835 - 1.015 * (len(words) / sentence_count) - 84.6 * (syllable_count / len(words))
+    return round(max(min(score, 100.0), 0.0), 1)
 
 
-def _extract_headings(content):
-    headings = []
+def _reading_time_minutes(word_count):
+    if word_count <= 0:
+        return 0
+    return max(1, math.ceil(word_count / 200))
 
-    for match in HTML_HEADING_PATTERN.finditer(content or ""):
-        headings.append({"level": int(match.group(1)), "text": re.sub(r"<[^>]+>", "", match.group(2)).strip()})
 
-    for match in MARKDOWN_HEADING_PATTERN.finditer(content or ""):
-        headings.append({"level": len(match.group(1)), "text": match.group(2).strip()})
+def _extract_keywords(title, content, tags):
+    counter = Counter()
 
-    return headings
+    for word in _tokenize(content):
+        normalized = _normalize_keyword(word)
+        if len(normalized) >= 4 and normalized not in STOPWORDS:
+            counter[normalized] += 1
+
+    for word in _tokenize(title):
+        normalized = _normalize_keyword(word)
+        if len(normalized) >= 4 and normalized not in STOPWORDS:
+            counter[normalized] += 2
+
+    for word in _tokenize((tags or "").replace(",", " ")):
+        normalized = _normalize_keyword(word)
+        if len(normalized) >= 3 and normalized not in STOPWORDS:
+            counter[normalized] += 3
+
+    return [{"term": term, "count": count} for term, count in counter.most_common(5)]
+
+
+def analyze_post_fields(title, content, meta_description="", tags="", category=""):
+    title = (title or "").strip()
+    content = (content or "").strip()
+    meta_description = (meta_description or "").strip()
+    tags = (tags or "").strip()
+    category = (category or "").strip()
+
+    words = _tokenize(content)
+    word_count = len(words)
+    sentence_count = _count_sentences(content)
+    readability_score = _readability_score(content, words, sentence_count)
+    reading_time_minutes = _reading_time_minutes(word_count)
+    title_length = len(title)
+    meta_length = len(meta_description)
+    heading_lines = _heading_lines(content)
+    heading_count = len(heading_lines)
+    has_heading = heading_count > 0
+    paragraph_count = len([paragraph for paragraph in re.split(r"\n\s*\n", content) if paragraph.strip()])
+
+    keywords = _extract_keywords(title, content, tags)
+    primary_keyword = keywords[0] if keywords else None
+    primary_keyword_density = 0.0
+    if primary_keyword and word_count:
+        primary_keyword_density = round(primary_keyword["count"] / word_count * 100, 2)
+
+    score = 0
+    checks = []
+    warnings = []
+    suggestions = []
+
+    def add_warning(message):
+        if message not in warnings:
+            warnings.append(message)
+
+    def add_suggestion(message):
+        if message not in suggestions:
+            suggestions.append(message)
+
+    if 30 <= title_length <= 60:
+        score += 15
+        checks.append({"label": "Title length", "status": "pass", "detail": "Title length is in a strong range."})
+    elif title_length >= 20:
+        score += 8
+        add_warning("Adjust the title closer to 30 to 60 characters for a cleaner search snippet.")
+        checks.append({"label": "Title length", "status": "warn", "detail": "Title is usable but not in the ideal range."})
+    else:
+        add_warning("The title is too short to communicate intent clearly.")
+        add_suggestion("Expand the title with the main topic or reader outcome.")
+        checks.append({"label": "Title length", "status": "fail", "detail": "Title needs more context."})
+
+    if 120 <= meta_length <= 160:
+        score += 10
+        checks.append({"label": "Meta description", "status": "pass", "detail": "Meta description is in a good range."})
+    elif meta_length >= 80:
+        score += 5
+        add_warning("Tighten the meta description toward 120 to 160 characters.")
+        checks.append({"label": "Meta description", "status": "warn", "detail": "Meta description exists but could be tuned."})
+    else:
+        add_warning("Meta description is missing or too short.")
+        add_suggestion("Write a meta description that summarizes the benefit of the post.")
+        checks.append({"label": "Meta description", "status": "fail", "detail": "Meta description needs work."})
+
+    if word_count >= 600:
+        score += 20
+        checks.append({"label": "Content depth", "status": "pass", "detail": "Content length is strong for an MVP blog post."})
+    elif word_count >= 300:
+        score += 14
+        add_warning("The post has enough material to analyze, but more depth could strengthen it.")
+        checks.append({"label": "Content depth", "status": "warn", "detail": "Content is acceptable but not especially deep."})
+    elif word_count >= 150:
+        score += 8
+        add_warning("The post is still light on detail.")
+        add_suggestion("Add another section with examples, steps, or takeaways.")
+        checks.append({"label": "Content depth", "status": "warn", "detail": "Content is short for SEO-focused guidance."})
+    else:
+        add_warning("The content is too short for reliable SEO analysis.")
+        add_suggestion("Add substantially more body content before publishing.")
+        checks.append({"label": "Content depth", "status": "fail", "detail": "Content needs more substance."})
+
+    if readability_score >= 60:
+        score += 20
+        checks.append({"label": "Readability", "status": "pass", "detail": "The writing should be approachable for a general audience."})
+    elif readability_score >= 45:
+        score += 12
+        add_warning("The writing is somewhat dense.")
+        add_suggestion("Shorten a few sentences and simplify complex phrasing.")
+        checks.append({"label": "Readability", "status": "warn", "detail": "Readable, but on the dense side."})
+    else:
+        add_warning("Readability is low and may slow readers down.")
+        add_suggestion("Break long sentences into shorter statements and simplify word choice.")
+        checks.append({"label": "Readability", "status": "fail", "detail": "The copy is harder to scan than ideal."})
+
+    if heading_count >= 2:
+        score += 10
+        checks.append({"label": "Heading structure", "status": "pass", "detail": "The draft includes multiple section headings."})
+    elif has_heading:
+        score += 6
+        add_warning("Only one heading was detected, so the post may still feel flat to scan.")
+        add_suggestion("Add another section heading to break the draft into clearer sections.")
+        checks.append({"label": "Heading structure", "status": "warn", "detail": "The draft has some structure but could use more sections."})
+    else:
+        add_warning("No headings were detected in the body.")
+        add_suggestion("Add section headings like `## Key Takeaways`, `Key Takeaways`, or HTML heading blocks to improve structure.")
+        checks.append({"label": "Heading structure", "status": "fail", "detail": "The draft needs clearer section breaks."})
+
+    if primary_keyword and 0.5 <= primary_keyword_density <= 3.0:
+        score += 15
+        checks.append({"label": "Keyword usage", "status": "pass", "detail": f"`{primary_keyword['term']}` appears naturally in the draft."})
+    elif primary_keyword:
+        score += 8
+        add_warning(f"Primary keyword density for `{primary_keyword['term']}` is {primary_keyword_density}%.")
+        add_suggestion("Keep the main keyword visible in the intro and a subheading without forcing repetition.")
+        checks.append({"label": "Keyword usage", "status": "warn", "detail": "Keyword focus exists but could be better balanced."})
+    else:
+        add_warning("No strong keyword candidates were detected yet.")
+        add_suggestion("Reinforce the main topic with more consistent vocabulary.")
+        checks.append({"label": "Keyword usage", "status": "fail", "detail": "The draft lacks a clear keyword focus."})
+
+    if paragraph_count >= 3:
+        score += 10
+        checks.append({"label": "Scannability", "status": "pass", "detail": "The draft has enough paragraph breaks for a long-form post."})
+    else:
+        add_warning("The draft would benefit from clearer section or paragraph breaks.")
+        add_suggestion("Split dense blocks into shorter paragraphs to improve scanning.")
+        checks.append({"label": "Scannability", "status": "fail", "detail": "Structure is still compact."})
+
+    if not suggestions:
+        add_suggestion("The draft is in good shape. Fine-tune the intro and internal links before publishing.")
+
+    return {
+        "seo_score": min(score, 100),
+        "word_count": word_count,
+        "readability_score": readability_score,
+        "reading_time_minutes": reading_time_minutes,
+        "sentence_count": sentence_count,
+        "title_length": title_length,
+        "meta_description_length": meta_length,
+        "paragraph_count": paragraph_count,
+        "heading_count": heading_count,
+        "has_headings": has_heading,
+        "keyword_candidates": keywords,
+        "primary_keyword": primary_keyword["term"] if primary_keyword else None,
+        "primary_keyword_density": primary_keyword_density,
+        "warnings": warnings,
+        "suggestions": suggestions,
+        "checks": checks,
+        "category": category,
+        "tags": [tag.strip() for tag in tags.split(",") if tag.strip()],
+    }
 
 
 class SEOAnalyzer:
-    SCORE_WEIGHTS = {
-        "title": 15,
-        "meta_description": 15,
-        "content_length": 20,
-        "readability": 20,
-        "heading_structure": 10,
-        "keyword_usage": 20,
-    }
-
-    def analyze(
-        self,
-        *,
-        title,
-        content,
-        meta_description="",
-        tags="",
-        category="",
-    ):
-        title = _clean_text(title)
-        content = _clean_text(content)
-        meta_description = _clean_text(meta_description)
-        tags = _clean_text(tags)
-        category = _clean_text(category)
-
-        words = _tokenize(content)
-        word_count = len(words)
-        sentence_list = _split_sentences(content)
-        sentence_count = len(sentence_list)
-        paragraph_list = _split_paragraphs(content)
-        paragraph_count = len(paragraph_list)
-        headings = _extract_headings(content)
-        estimated_reading_time = round(word_count / 200, 1) if word_count else 0.0
-        readability_score = self._readability_score(content)
-
-        keyword_data = self._keyword_analysis(
+    def analyze(self, *, title, content, meta_description="", tags="", category=""):
+        return analyze_post_fields(
             title=title,
             content=content,
+            meta_description=meta_description,
             tags=tags,
             category=category,
-            word_count=word_count,
         )
-        title_checks = self._title_checks(title)
-        meta_checks = self._meta_checks(meta_description)
-        heading_checks = self._heading_checks(headings, paragraph_count)
-        content_checks = self._content_checks(word_count, sentence_count, paragraph_count)
-        readability_checks = self._readability_checks(readability_score)
-        keyword_checks = self._keyword_checks(keyword_data, word_count)
-
-        scored_sections = {
-            "title": title_checks["score"],
-            "meta_description": meta_checks["score"],
-            "content_length": content_checks["score"],
-            "readability": readability_checks["score"],
-            "heading_structure": heading_checks["score"],
-            "keyword_usage": keyword_checks["score"],
-        }
-
-        seo_score = round(sum(scored_sections.values()))
-        suggestions = self._prioritize_suggestions(
-            title_checks["suggestions"]
-            + meta_checks["suggestions"]
-            + content_checks["suggestions"]
-            + readability_checks["suggestions"]
-            + heading_checks["suggestions"]
-            + keyword_checks["suggestions"]
-        )
-
-        warnings = [
-            item["message"]
-            for item in suggestions
-            if item["priority"] in {"high", "medium"}
-        ]
-        passed_checks = [
-            check
-            for collection in (
-                title_checks["passed_checks"],
-                meta_checks["passed_checks"],
-                content_checks["passed_checks"],
-                readability_checks["passed_checks"],
-                heading_checks["passed_checks"],
-                keyword_checks["passed_checks"],
-            )
-            for check in collection
-        ]
-
-        return {
-            "seo_score": _clamp(seo_score, 0, 100),
-            "word_count": word_count,
-            "sentence_count": sentence_count,
-            "paragraph_count": paragraph_count,
-            "readability_score": readability_score,
-            "estimated_reading_time_minutes": estimated_reading_time,
-            "keyword_candidates": keyword_data["keyword_candidates"],
-            "keyword_density": keyword_data["keyword_density"],
-            "repeated_terms": keyword_data["repeated_terms"],
-            "primary_keyword": keyword_data["primary_keyword"],
-            "title_checks": self._serialize_check_result(title_checks, "title"),
-            "meta_description_checks": self._serialize_check_result(meta_checks, "meta_description"),
-            "heading_structure_checks": self._serialize_check_result(heading_checks, "heading_structure"),
-            "content_checks": self._serialize_check_result(content_checks, "content_length"),
-            "readability_checks": self._serialize_check_result(readability_checks, "readability"),
-            "keyword_checks": self._serialize_check_result(keyword_checks, "keyword_usage"),
-            "headings": headings,
-            "suggestions": suggestions,
-            "warnings": warnings,
-            "passed_checks": passed_checks,
-            "scoring_breakdown": {
-                key: {
-                    "score": value,
-                    "max_score": self.SCORE_WEIGHTS[key],
-                }
-                for key, value in scored_sections.items()
-            },
-            "notes": [
-                "This score is based on on-page content quality heuristics only.",
-                "The analyzer does not estimate live rankings, keyword competitiveness, or search volume.",
-            ],
-        }
-
-    def _readability_score(self, content):
-        if not content:
-            return None
-
-        if textstat is not None:
-            return round(textstat.flesch_reading_ease(content), 2)
-
-        return _fallback_flesch_reading_ease(content)
-
-    def _title_checks(self, title):
-        score = 0
-        suggestions = []
-        passed_checks = []
-        title_length = len(title)
-
-        if 45 <= title_length <= 65:
-            score += 15
-            passed_checks.append("Title length is within a strong SEO-friendly range.")
-        elif 35 <= title_length <= 75:
-            score += 10
-            suggestions.append(self._suggestion("medium", "title", "Tighten the title to roughly 45-65 characters for better scanability."))
-        elif title_length == 0:
-            suggestions.append(self._suggestion("high", "title", "Add a clear title before running SEO analysis."))
-        else:
-            score += 5
-            suggestions.append(self._suggestion("high", "title", "Rewrite the title so it is concise and specific, ideally around 45-65 characters."))
-
-        if ":" in title or "-" in title:
-            passed_checks.append("Title uses a descriptive separator that can improve clarity.")
-
-        return {
-            "score": score,
-            "passed_checks": passed_checks,
-            "suggestions": suggestions,
-            "details": {"length": title_length},
-        }
-
-    def _meta_checks(self, meta_description):
-        score = 0
-        suggestions = []
-        passed_checks = []
-        meta_length = len(meta_description)
-
-        if 120 <= meta_length <= 160:
-            score = 15
-            passed_checks.append("Meta description length is strong for a search snippet.")
-        elif 90 <= meta_length <= 175:
-            score = 10
-            suggestions.append(self._suggestion("medium", "meta_description", "Refine the meta description toward 120-160 characters for a tighter summary."))
-        elif meta_length == 0:
-            suggestions.append(self._suggestion("high", "meta_description", "Add a meta description that explains the reader benefit in one or two sentences."))
-        else:
-            score = 5
-            suggestions.append(self._suggestion("high", "meta_description", "Rewrite the meta description so it clearly summarizes the page in about 120-160 characters."))
-
-        return {
-            "score": score,
-            "passed_checks": passed_checks,
-            "suggestions": suggestions,
-            "details": {"length": meta_length},
-        }
-
-    def _content_checks(self, word_count, sentence_count, paragraph_count):
-        score = 0
-        suggestions = []
-        passed_checks = []
-
-        if word_count >= 900:
-            score += 20
-            passed_checks.append("Content length is strong enough to cover a topic in depth.")
-        elif word_count >= 600:
-            score += 14
-            suggestions.append(self._suggestion("medium", "content_length", "Expand the article with a few more concrete examples or explanations to strengthen topical depth."))
-        elif word_count >= 300:
-            score += 8
-            suggestions.append(self._suggestion("high", "content_length", "The article is light for SEO analysis. Add more depth, examples, or supporting sections."))
-        else:
-            suggestions.append(self._suggestion("high", "content_length", "Content is too short for a strong SEO result. Add substantially more useful body content."))
-
-        if sentence_count >= 5:
-            passed_checks.append("Content has enough sentence structure for readability analysis.")
-        else:
-            suggestions.append(self._suggestion("medium", "content_length", "Break the content into more complete sentences so the page reads like a developed article."))
-
-        if paragraph_count >= 3:
-            passed_checks.append("Content is divided into scan-friendly paragraphs.")
-        else:
-            suggestions.append(self._suggestion("medium", "content_length", "Split the content into multiple paragraphs to improve scanability."))
-
-        return {
-            "score": score,
-            "passed_checks": passed_checks,
-            "suggestions": suggestions,
-            "details": {
-                "word_count": word_count,
-                "sentence_count": sentence_count,
-                "paragraph_count": paragraph_count,
-            },
-        }
-
-    def _readability_checks(self, readability_score):
-        score = 0
-        suggestions = []
-        passed_checks = []
-
-        if readability_score is None:
-            suggestions.append(self._suggestion("medium", "readability", "Readability could not be calculated because the content is too thin or malformed."))
-        elif readability_score >= 60:
-            score = 20
-            passed_checks.append("Readability is in a strong range for general web content.")
-        elif readability_score >= 45:
-            score = 14
-            suggestions.append(self._suggestion("medium", "readability", "Simplify a few long sentences to push readability into a more accessible range."))
-        elif readability_score >= 30:
-            score = 8
-            suggestions.append(self._suggestion("high", "readability", "The draft is difficult to scan. Shorten sentences and replace dense phrasing with clearer language."))
-        else:
-            score = 4
-            suggestions.append(self._suggestion("high", "readability", "Readability is very low. Rewrite for shorter sentences, simpler transitions, and clearer wording."))
-
-        return {
-            "score": score,
-            "passed_checks": passed_checks,
-            "suggestions": suggestions,
-            "details": {"readability_score": readability_score},
-        }
-
-    def _heading_checks(self, headings, paragraph_count):
-        score = 0
-        suggestions = []
-        passed_checks = []
-        heading_levels = [heading["level"] for heading in headings]
-
-        if headings:
-            score += 6
-            passed_checks.append("The draft includes headings that can improve scanability.")
-        elif paragraph_count >= 4:
-            suggestions.append(self._suggestion("high", "heading_structure", "Add section headings so longer content is easier to scan and understand."))
-        else:
-            suggestions.append(self._suggestion("medium", "heading_structure", "Consider adding headings as the article grows to clarify its structure."))
-
-        if heading_levels and 1 in heading_levels:
-            score += 2
-            passed_checks.append("The heading structure includes a top-level heading.")
-        elif heading_levels:
-            suggestions.append(self._suggestion("low", "heading_structure", "Start the heading outline with an H1-style heading to anchor the article structure."))
-
-        if heading_levels and heading_levels == sorted(heading_levels):
-            score += 2
-            passed_checks.append("Heading levels appear in a logical order.")
-        elif len(heading_levels) > 1:
-            suggestions.append(self._suggestion("medium", "heading_structure", "Keep heading levels in a logical order without jumping abruptly between levels."))
-
-        return {
-            "score": score,
-            "passed_checks": passed_checks,
-            "suggestions": suggestions,
-            "details": {"heading_count": len(headings), "levels": heading_levels},
-        }
-
-    def _keyword_analysis(self, *, title, content, tags, category, word_count):
-        tokens = _tokenize(content)
-        filtered_tokens = [token for token in tokens if len(token) >= 3 and token not in STOP_WORDS]
-        counts = Counter(filtered_tokens)
-
-        keyword_candidates = []
-        for keyword, count in counts.most_common(8):
-            density = round((count / word_count) * 100, 2) if word_count else 0.0
-            keyword_candidates.append({"keyword": keyword, "count": count, "density": density})
-
-        primary_keyword = keyword_candidates[0]["keyword"] if keyword_candidates else None
-        keyword_density = {
-            item["keyword"]: item["density"]
-            for item in keyword_candidates[:5]
-        }
-        repeated_terms = [item for item in keyword_candidates if item["count"] >= 3]
-
-        context_terms = {
-            token
-            for token in _tokenize(" ".join(part for part in (title, tags, category) if part))
-            if len(token) >= 3 and token not in STOP_WORDS
-        }
-
-        return {
-            "keyword_candidates": keyword_candidates,
-            "keyword_density": keyword_density,
-            "repeated_terms": repeated_terms,
-            "primary_keyword": primary_keyword,
-            "context_terms": sorted(context_terms),
-        }
-
-    def _keyword_checks(self, keyword_data, word_count):
-        score = 0
-        suggestions = []
-        passed_checks = []
-        keyword_candidates = keyword_data["keyword_candidates"]
-        context_terms = set(keyword_data["context_terms"])
-        primary_keyword = keyword_data["primary_keyword"]
-
-        if keyword_candidates:
-            score += 8
-            passed_checks.append("The article has repeated topical terms that can anchor keyword guidance.")
-        else:
-            suggestions.append(self._suggestion("high", "keyword_usage", "The content does not repeat any meaningful topical terms yet. Strengthen the main theme with clearer, consistent language."))
-
-        if primary_keyword:
-            primary_density = keyword_data["keyword_density"].get(primary_keyword, 0.0)
-            if 0.5 <= primary_density <= 2.5:
-                score += 8
-                passed_checks.append("Primary keyword repetition is present without looking excessive.")
-            elif primary_density > 2.5:
-                score += 3
-                suggestions.append(self._suggestion("high", "keyword_usage", f'The term "{primary_keyword}" appears heavily. Reduce repetition and use natural variations.'))
-            else:
-                score += 4
-                suggestions.append(self._suggestion("medium", "keyword_usage", f'Use the main topic term "{primary_keyword}" a little more consistently in key sections if it fits naturally.'))
-
-        if context_terms and any(term in {item["keyword"] for item in keyword_candidates[:5]} for term in context_terms):
-            score += 4
-            passed_checks.append("Content language overlaps with the title, tags, or category.")
-        elif word_count:
-            suggestions.append(self._suggestion("medium", "keyword_usage", "Align body copy more closely with the title, tags, or category so the topic stays explicit."))
-
-        return {
-            "score": score,
-            "passed_checks": passed_checks,
-            "suggestions": suggestions,
-            "details": {
-                "primary_keyword": primary_keyword,
-                "context_terms": sorted(context_terms),
-            },
-        }
-
-    def _serialize_check_result(self, result, key):
-        return {
-            "score": result["score"],
-            "max_score": self.SCORE_WEIGHTS[key],
-            "details": result["details"],
-        }
-
-    def _prioritize_suggestions(self, suggestions):
-        priority_order = {"high": 0, "medium": 1, "low": 2}
-        ordered = sorted(
-            suggestions,
-            key=lambda item: (priority_order[item["priority"]], item["category"], item["message"]),
-        )
-        return ordered
-
-    def _suggestion(self, priority, category, message):
-        return {"priority": priority, "category": category, "message": message}
 
 
 def analyze_post(*, title, content, meta_description="", tags="", category=""):
-    analyzer = SEOAnalyzer()
-    return analyzer.analyze(
+    return analyze_post_fields(
         title=title,
         content=content,
         meta_description=meta_description,
@@ -563,6 +352,67 @@ def analyze_post_record(post):
     )
 
 
+def _report_payload(report):
+    if report is None:
+        return None
+
+    suggestions_payload = {}
+    if report.suggestions_json:
+        try:
+            suggestions_payload = json.loads(report.suggestions_json)
+        except json.JSONDecodeError:
+            suggestions_payload = {}
+
+    if isinstance(suggestions_payload, list):
+        suggestions_payload = {"suggestions": suggestions_payload}
+
+    keywords = []
+    if report.keywords_json:
+        try:
+            keywords = json.loads(report.keywords_json)
+        except json.JSONDecodeError:
+            keywords = []
+
+    normalized_keywords = []
+    for keyword in keywords:
+        if isinstance(keyword, dict):
+            normalized_keywords.append(keyword)
+        else:
+            normalized_keywords.append({"term": str(keyword), "count": None})
+
+    return {
+        "report_id": report.id,
+        "created_at": report.created_at,
+        "seo_score": report.seo_score,
+        "word_count": report.word_count,
+        "readability_score": report.readability_score,
+        "keyword_candidates": normalized_keywords,
+        "warnings": suggestions_payload.get("warnings", []),
+        "suggestions": suggestions_payload.get("suggestions", []),
+        "checks": suggestions_payload.get("checks", []),
+        "reading_time_minutes": suggestions_payload.get("reading_time_minutes"),
+        "sentence_count": suggestions_payload.get("sentence_count"),
+        "title_length": suggestions_payload.get("title_length"),
+        "meta_description_length": suggestions_payload.get("meta_description_length"),
+        "paragraph_count": suggestions_payload.get("paragraph_count"),
+        "heading_count": suggestions_payload.get("heading_count"),
+        "has_headings": suggestions_payload.get("has_headings"),
+        "primary_keyword": suggestions_payload.get("primary_keyword"),
+        "primary_keyword_density": suggestions_payload.get("primary_keyword_density"),
+        "keyword_density": {},
+        "repeated_terms": [],
+        "internal_links": [],
+    }
+
+
+def serialize_report(report):
+    return _report_payload(report)
+
+
+def deserialize_seo_report(report):
+    return _report_payload(report)
+
+
 def get_latest_seo_report(post):
     return (
         SEOReport.query.filter_by(post_id=post.id)
@@ -571,27 +421,8 @@ def get_latest_seo_report(post):
     )
 
 
-def deserialize_seo_report(report):
-    if report is None:
-        return None
-
-    suggestions = json.loads(report.suggestions_json or "[]")
-    keyword_payload = json.loads(report.keywords_json or "{}")
-    internal_links = json.loads(report.internal_links_json or "[]")
-
-    return {
-        "report_id": report.id,
-        "created_at": report.created_at,
-        "word_count": report.word_count,
-        "readability_score": report.readability_score,
-        "seo_score": report.seo_score,
-        "suggestions": suggestions,
-        "keyword_candidates": keyword_payload.get("keyword_candidates", []),
-        "keyword_density": keyword_payload.get("keyword_density", {}),
-        "repeated_terms": keyword_payload.get("repeated_terms", []),
-        "primary_keyword": keyword_payload.get("primary_keyword"),
-        "internal_links": internal_links,
-    }
+def get_latest_post_analysis(post):
+    return serialize_report(get_latest_seo_report(post))
 
 
 def save_seo_report(post, analysis, *, internal_links=None):
@@ -600,16 +431,30 @@ def save_seo_report(post, analysis, *, internal_links=None):
         word_count=analysis.get("word_count"),
         readability_score=analysis.get("readability_score"),
         seo_score=analysis.get("seo_score"),
-        suggestions_json=json.dumps(analysis.get("suggestions", [])),
-        keywords_json=json.dumps(
+        suggestions_json=json.dumps(
             {
+                "suggestions": analysis.get("suggestions", []),
+                "warnings": analysis.get("warnings", []),
+                "checks": analysis.get("checks", []),
+                "reading_time_minutes": analysis.get("reading_time_minutes"),
+                "sentence_count": analysis.get("sentence_count"),
+                "title_length": analysis.get("title_length"),
+                "meta_description_length": analysis.get("meta_description_length"),
+                "paragraph_count": analysis.get("paragraph_count"),
+                "heading_count": analysis.get("heading_count"),
+                "has_headings": analysis.get("has_headings"),
                 "primary_keyword": analysis.get("primary_keyword"),
-                "keyword_candidates": analysis.get("keyword_candidates", []),
-                "keyword_density": analysis.get("keyword_density", {}),
-                "repeated_terms": analysis.get("repeated_terms", []),
+                "primary_keyword_density": analysis.get("primary_keyword_density"),
             }
         ),
+        keywords_json=json.dumps(analysis.get("keyword_candidates", [])),
         internal_links_json=json.dumps(internal_links or []),
     )
     db.session.add(report)
+    return report
+
+
+def save_post_analysis(post, analysis):
+    report = save_seo_report(post, analysis)
+    db.session.commit()
     return report

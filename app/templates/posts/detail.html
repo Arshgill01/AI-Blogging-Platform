@@ -3,146 +3,48 @@
 {% block title %}{{ post.title }} | AI Blogging Platform{% endblock %}
 
 {% block content %}
-  <div class="mx-auto" style="max-width: 960px;">
-    <article class="mb-4">
-      <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-        <span class="badge text-bg-dark">{{ post.category }}</span>
-        <small class="text-muted">Created {{ post.created_at.strftime('%b %d, %Y') }}</small>
-        <a class="btn btn-sm btn-outline-secondary ms-auto" href="{{ url_for('posts.edit', post_id=post.id) }}">Edit</a>
-        <form method="post" action="{{ url_for('posts.analyze', post_id=post.id) }}">
-          <button class="btn btn-sm btn-primary" type="submit">Analyze SEO</button>
-        </form>
+  <article class="mx-auto" style="max-width: 960px;">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+      <span class="badge text-bg-dark">{{ post.category }}</span>
+      <small class="text-muted">Created {{ post.created_at.strftime('%b %d, %Y') }}</small>
+      <a class="btn btn-sm btn-outline-secondary ms-auto" href="{{ url_for('posts.edit', post_id=post.id) }}">Edit</a>
+      <form method="post" action="{{ url_for('posts.analyze', post_id=post.id) }}">
+        <button class="btn btn-sm btn-primary" type="submit">Run SEO Analysis</button>
+      </form>
+    </div>
+
+    <h1 class="display-6 mb-3">{{ post.title }}</h1>
+
+    {% if post.meta_description %}
+      <p class="lead text-muted">{{ post.meta_description }}</p>
+    {% endif %}
+
+    {% if post.tags %}
+      <p class="small text-muted">Tags: {{ post.tags }}</p>
+    {% endif %}
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        {% for paragraph in post.content.split('\n') %}
+          {% if paragraph.strip() %}
+            <p>{{ paragraph }}</p>
+          {% endif %}
+        {% endfor %}
       </div>
+    </div>
 
-      <h1 class="display-6 mb-3">{{ post.title }}</h1>
-
-      {% if post.meta_description %}
-        <p class="lead text-muted">{{ post.meta_description }}</p>
-      {% endif %}
-
-      {% if post.tags %}
-        <p class="small text-muted">Tags: {{ post.tags }}</p>
-      {% endif %}
-
-      <div class="card border-0 shadow-sm">
-        <div class="card-body p-4">
-          {% for paragraph in post.content.split('\n') %}
-            {% if paragraph.strip() %}
-              <p>{{ paragraph }}</p>
-            {% endif %}
-          {% endfor %}
-        </div>
-      </div>
-    </article>
-
-    <section>
-      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-3">
-        <div>
-          <p class="text-uppercase text-muted fw-semibold small mb-2">Author SEO View</p>
-          <h2 class="h3 mb-2">Latest SEO analysis</h2>
-          <p class="text-muted mb-0">On-page guidance based only on this post's stored content.</p>
-        </div>
-        {% if seo_report %}
-          <small class="text-muted">Updated {{ seo_report.created_at.strftime('%b %d, %Y %H:%M') }}</small>
-        {% endif %}
-      </div>
-
-      {% if seo_report %}
-        <div class="row g-4">
-          <div class="col-12 col-md-6">
-            <div class="card border-0 shadow-sm h-100">
-              <div class="card-body">
-                <p class="text-uppercase text-muted fw-semibold small mb-2">Score</p>
-                <div class="seo-score mb-3">{{ seo_report.seo_score|round|int }}</div>
-                <div class="seo-metric-grid">
-                  <div class="seo-metric">
-                    <span class="small text-muted">Words</span>
-                    <strong>{{ seo_report.word_count }}</strong>
-                  </div>
-                  <div class="seo-metric">
-                    <span class="small text-muted">Readability</span>
-                    <strong>
-                      {% if seo_report.readability_score is not none %}
-                        {{ '%.1f'|format(seo_report.readability_score) }}
-                      {% else %}
-                        N/A
-                      {% endif %}
-                    </strong>
-                  </div>
-                  <div class="seo-metric">
-                    <span class="small text-muted">Primary keyword</span>
-                    <strong>{{ seo_report.primary_keyword or 'Not detected' }}</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-12 col-md-6">
-            <div class="card border-0 shadow-sm h-100">
-              <div class="card-body">
-                <p class="text-uppercase text-muted fw-semibold small mb-2">Priority Suggestions</p>
-                {% if seo_report.suggestions %}
-                  <ul class="seo-list">
-                    {% for suggestion in seo_report.suggestions[:5] %}
-                      <li>
-                        <span class="seo-priority seo-priority-{{ suggestion.priority }}">{{ suggestion.priority }}</span>
-                        {{ suggestion.message }}
-                      </li>
-                    {% endfor %}
-                  </ul>
-                {% else %}
-                  <p class="text-muted mb-0">No open suggestions in the latest report.</p>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-
-          <div class="col-12 col-md-6">
-            <div class="card border-0 shadow-sm h-100">
-              <div class="card-body">
-                <p class="text-uppercase text-muted fw-semibold small mb-2">Keyword Candidates</p>
-                {% if seo_report.keyword_candidates %}
-                  <ul class="seo-list">
-                    {% for keyword in seo_report.keyword_candidates[:5] %}
-                      <li>{{ keyword.keyword }} <span class="text-muted small">({{ keyword.count }} mentions, {{ keyword.density }}%)</span></li>
-                    {% endfor %}
-                  </ul>
-                {% else %}
-                  <p class="text-muted mb-0">No keyword candidates detected yet.</p>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-
-          <div class="col-12 col-md-6">
-            <div class="card border-0 shadow-sm h-100">
-              <div class="card-body">
-                <p class="text-uppercase text-muted fw-semibold small mb-2">Repeated Terms</p>
-                {% if seo_report.repeated_terms %}
-                  <ul class="seo-list">
-                    {% for keyword in seo_report.repeated_terms[:5] %}
-                      <li>{{ keyword.keyword }} <span class="text-muted small">({{ keyword.count }} mentions)</span></li>
-                    {% endfor %}
-                  </ul>
-                {% else %}
-                  <p class="text-muted mb-0">Repeated-term summary will appear when the draft has clearer topical repetition.</p>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-        </div>
-      {% else %}
+    <div class="mt-3">
+      {% set analysis = latest_analysis %}
+      {% include "posts/_seo_report.html" %}
+      {% if not latest_analysis %}
         <div class="card border-0 shadow-sm">
-          <div class="card-body py-5 text-center">
-            <h2 class="h4">No SEO report yet</h2>
-            <p class="text-muted">Run the analyzer to generate an author-side SEO review for this post.</p>
-            <form method="post" action="{{ url_for('posts.analyze', post_id=post.id) }}">
-              <button class="btn btn-primary" type="submit">Generate SEO report</button>
-            </form>
+          <div class="card-body">
+            <p class="text-uppercase text-muted fw-semibold small mb-2">SEO Analysis</p>
+            <h2 class="h4 mb-2">No analysis yet</h2>
+            <p class="text-muted mb-0">Use the button above to generate an SEO report for this post.</p>
           </div>
         </div>
       {% endif %}
-    </section>
-  </div>
+    </div>
+  </article>
 {% endblock %}
