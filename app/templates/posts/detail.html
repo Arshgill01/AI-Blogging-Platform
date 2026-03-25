@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} | AI Blogging Platform{% endblock %}
+
+{% block content %}
+  <article class="mx-auto" style="max-width: 760px;">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+      <span class="badge text-bg-dark">{{ post.category }}</span>
+      <small class="text-muted">Created {{ post.created_at.strftime('%b %d, %Y') }}</small>
+      <a class="btn btn-sm btn-outline-secondary ms-auto" href="{{ url_for('posts.edit', post_id=post.id) }}">Edit</a>
+    </div>
+
+    <h1 class="display-6 mb-3">{{ post.title }}</h1>
+
+    {% if post.meta_description %}
+      <p class="lead text-muted">{{ post.meta_description }}</p>
+    {% endif %}
+
+    {% if post.tags %}
+      <p class="small text-muted">Tags: {{ post.tags }}</p>
+    {% endif %}
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        {% for paragraph in post.content.split('\n') %}
+          {% if paragraph.strip() %}
+            <p>{{ paragraph }}</p>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </article>
+{% endblock %}
