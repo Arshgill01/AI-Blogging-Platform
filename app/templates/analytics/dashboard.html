@@ -1,219 +1,438 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard | WaveBlog AI{% endblock %}
+{% block title %}Analytics | AI Blogging Platform{% endblock %}
 
 {% block content %}
-  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
-    <div>
-      <span class="text-uppercase text-primary fw-bold small mb-2 d-block tracking-wider">Admin View</span>
-      <h1 class="display-6 fw-bold mb-2 text-dark">Analytics Dashboard</h1>
-      <p class="text-muted mb-0">Track engagement, content quality, and recommendation activity from the same seeded product data.</p>
-    </div>
-    <div class="d-flex gap-2 flex-wrap">
-      <a href="{{ url_for('main.home') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-house me-1"></i>Reader Home
-      </a>
-      <a href="{{ url_for('posts.create') }}" class="btn btn-primary">
-        <i class="bi bi-pencil-square me-1"></i>New Draft
-      </a>
-    </div>
-  </div>
+  {% set summary = dashboard.summary %}
+  {% set highlights = dashboard.highlights %}
 
-  <section class="dashboard-kpis mb-4">
-    <article class="dashboard-kpi">
-      <span class="dashboard-kpi__label">Total posts</span>
-      <strong>{{ dashboard.summary.total_posts }}</strong>
-      <small>{{ dashboard.summary.seo_coverage }}% with SEO coverage</small>
-    </article>
-    <article class="dashboard-kpi">
-      <span class="dashboard-kpi__label">Interactions</span>
-      <strong>{{ dashboard.summary.total_interactions }}</strong>
-      <small>{{ dashboard.summary.recommendation_clicks }} recommendation clicks</small>
-    </article>
-    <article class="dashboard-kpi">
-      <span class="dashboard-kpi__label">Reader sessions</span>
-      <strong>{{ dashboard.summary.total_sessions }}</strong>
-      <small>Seeded and live browsing activity combined</small>
-    </article>
-    <article class="dashboard-kpi">
-      <span class="dashboard-kpi__label">Avg. dwell time</span>
-      <strong>{{ dashboard.summary.avg_dwell_time }}s</strong>
-      <small>Across tracked page views</small>
-    </article>
-    <article class="dashboard-kpi">
-      <span class="dashboard-kpi__label">Avg. SEO score</span>
-      <strong>{{ dashboard.summary.average_seo_score }}</strong>
-      <small>{{ dashboard.summary.top_category or "No category leader yet" }}</small>
-    </article>
+  <section class="dashboard-hero mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-8">
+        <span class="text-uppercase fw-bold small tracking-wider text-dashboard-accent d-block mb-2">Admin View</span>
+        <h1 class="display-6 fw-bold mb-2">Analytics dashboard</h1>
+        <p class="lead text-muted mb-0">
+          Make content performance, reader interest, recommendation behavior, and SEO quality visible in one place.
+        </p>
+      </div>
+      <div class="col-lg-4">
+        <div class="dashboard-callout">
+          <div class="small text-uppercase fw-bold tracking-wider text-muted mb-2">Demo highlights</div>
+          <p class="mb-2"><strong>Top post:</strong> {{ highlights.top_post_title or "No activity yet" }}</p>
+          <p class="mb-2"><strong>Top category:</strong> {{ highlights.top_category or "No category data yet" }}</p>
+          <p class="mb-0"><strong>SEO average:</strong> {{ summary.avg_seo_score if summary.avg_seo_score is not none else "N/A" }}</p>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <div class="row g-4">
-    <div class="col-12 col-xl-7">
-      <section class="card border-0 shadow-sm h-100">
-        <div class="card-body p-4">
-          <div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
-            <div>
-              <p class="text-uppercase text-muted fw-semibold small mb-2">Top Content</p>
-              <h2 class="h4 mb-0">Most engaged posts</h2>
-            </div>
+  <section class="row g-3 mb-4">
+    <div class="col-6 col-xl-2">
+      <div class="dashboard-stat card h-100 border-0">
+        <div class="card-body">
+          <div class="dashboard-stat__label">Posts</div>
+          <div class="dashboard-stat__value">{{ summary.total_posts }}</div>
+          <div class="dashboard-stat__meta">{{ summary.total_categories }} categories</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-2">
+      <div class="dashboard-stat card h-100 border-0">
+        <div class="card-body">
+          <div class="dashboard-stat__label">Sessions</div>
+          <div class="dashboard-stat__value">{{ summary.total_sessions }}</div>
+          <div class="dashboard-stat__meta">{{ summary.active_recent_sessions }} active in 7d</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-2">
+      <div class="dashboard-stat card h-100 border-0">
+        <div class="card-body">
+          <div class="dashboard-stat__label">Interactions</div>
+          <div class="dashboard-stat__value">{{ summary.total_interactions }}</div>
+          <div class="dashboard-stat__meta">{{ summary.total_views }} views</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-2">
+      <div class="dashboard-stat card h-100 border-0">
+        <div class="card-body">
+          <div class="dashboard-stat__label">Avg dwell</div>
+          <div class="dashboard-stat__value">
+            {% if summary.avg_dwell_time is not none %}
+              {{ summary.avg_dwell_time }}s
+            {% else %}
+              N/A
+            {% endif %}
           </div>
+          <div class="dashboard-stat__meta">Across tracked events</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-2">
+      <div class="dashboard-stat card h-100 border-0">
+        <div class="card-body">
+          <div class="dashboard-stat__label">Rec clicks</div>
+          <div class="dashboard-stat__value">{{ summary.recommendation_clicks }}</div>
+          <div class="dashboard-stat__meta">Recommendation signals</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-2">
+      <div class="dashboard-stat card h-100 border-0">
+        <div class="card-body">
+          <div class="dashboard-stat__label">Avg SEO</div>
+          <div class="dashboard-stat__value">
+            {% if summary.avg_seo_score is not none %}
+              {{ summary.avg_seo_score }}
+            {% else %}
+              N/A
+            {% endif %}
+          </div>
+          <div class="dashboard-stat__meta">{{ summary.seo_coverage_pct }}% coverage</div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-          {% if dashboard.top_posts %}
-            <div class="table-responsive">
-              <table class="table align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>Post</th>
-                    <th>Views</th>
-                    <th>Clicks</th>
-                    <th>Avg. dwell</th>
-                    <th>SEO</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for item in dashboard.top_posts %}
-                    <tr>
-                      <td>
-                        <a class="fw-semibold text-decoration-none" href="{{ url_for('posts.detail', post_id=item.post_id) }}">{{ item.title }}</a>
-                        <div class="small text-muted">{{ item.category }}</div>
-                      </td>
-                      <td>{{ item.view_count }}</td>
-                      <td>{{ item.recommendation_clicks }}</td>
-                      <td>{{ item.avg_dwell_time }}s</td>
-                      <td>{{ item.seo_score if item.seo_score is not none else "N/A" }}</td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+  <section class="row g-4 mb-4">
+    <div class="col-12 col-xl-7">
+      <div class="card border-0 h-100">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div>
+              <h2 class="h5 mb-1">Top post performance</h2>
+              <p class="text-muted mb-0">Views and recommendation click depth for the strongest posts.</p>
+            </div>
+            <span class="badge text-bg-light">Top {{ dashboard.top_posts|length }}</span>
+          </div>
+          {% if dashboard.has_interactions and dashboard.chart_data.top_posts.labels %}
+            <div class="chart-shell">
+              <canvas id="topPostsChart" aria-label="Top post performance chart"></canvas>
             </div>
           {% else %}
-            <p class="text-muted mb-0">No post engagement yet. Browse a few articles to populate this table.</p>
+            <p class="text-muted mb-0">No interaction data yet. Browse posts to start filling this chart.</p>
           {% endif %}
         </div>
-      </section>
+      </div>
+    </div>
+    <div class="col-12 col-xl-5">
+      <div class="card border-0 h-100">
+        <div class="card-body p-4">
+          <h2 class="h5 mb-1">Category interest</h2>
+          <p class="text-muted mb-3">Where readers are spending the most attention.</p>
+          {% if dashboard.has_interactions and dashboard.chart_data.categories.labels %}
+            <div class="chart-shell chart-shell--compact">
+              <canvas id="categoryChart" aria-label="Category interest chart"></canvas>
+            </div>
+          {% else %}
+            <p class="text-muted mb-0">Category popularity will appear once posts receive traffic.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-7">
+      <div class="card border-0 h-100">
+        <div class="card-body p-4">
+          <h2 class="h5 mb-1">Recent activity</h2>
+          <p class="text-muted mb-3">Last {{ dashboard.chart_data.recent_activity.labels|length }} days of views and recommendation clicks.</p>
+          {% if dashboard.has_interactions %}
+            <div class="chart-shell">
+              <canvas id="recentActivityChart" aria-label="Recent activity chart"></canvas>
+            </div>
+          {% else %}
+            <p class="text-muted mb-0">Recent activity stays empty until sessions begin reading content.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-5">
+      <div class="card border-0 h-100">
+        <div class="card-body p-4">
+          <h2 class="h5 mb-1">SEO score snapshot</h2>
+          <p class="text-muted mb-3">Latest stored SEO scores by post.</p>
+          {% if dashboard.has_seo_reports and dashboard.chart_data.seo_scores.labels %}
+            <div class="chart-shell chart-shell--compact">
+              <canvas id="seoScoresChart" aria-label="SEO score chart"></canvas>
+            </div>
+          {% else %}
+            <p class="text-muted mb-0">Run SEO analysis on posts to populate this quality snapshot.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="row g-4">
+    <div class="col-12 col-xl-7">
+      <div class="card border-0 h-100">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div>
+              <h2 class="h5 mb-1">Post leaderboard</h2>
+              <p class="text-muted mb-0">A compact view of engagement and content quality signals per post.</p>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table align-middle dashboard-table mb-0">
+              <thead>
+                <tr>
+                  <th>Post</th>
+                  <th>Views</th>
+                  <th>Rec clicks</th>
+                  <th>Avg dwell</th>
+                  <th>SEO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for post in dashboard.top_posts %}
+                  <tr>
+                    <td>
+                      <a class="fw-semibold text-decoration-none" href="{{ url_for('posts.detail', post_id=post.post_id) }}">{{ post.title }}</a>
+                      <div class="small text-muted">{{ post.category }}</div>
+                    </td>
+                    <td>{{ post.view_count }}</td>
+                    <td>{{ post.recommendation_clicks }}</td>
+                    <td>{{ post.avg_dwell_time ~ 's' if post.avg_dwell_time is not none else 'N/A' }}</td>
+                    <td>{{ post.seo_score if post.seo_score is not none else 'N/A' }}</td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="5" class="text-muted">No post performance data available yet.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="col-12 col-xl-5">
-      <section class="card border-0 shadow-sm h-100">
+      <div class="card border-0 h-100">
         <div class="card-body p-4">
-          <p class="text-uppercase text-muted fw-semibold small mb-2">Audience Interest</p>
-          <h2 class="h4 mb-3">Category momentum</h2>
-
-          {% if dashboard.category_interest %}
-            <canvas id="categoryChart" height="280"></canvas>
-          {% else %}
-            <p class="text-muted mb-0">No category interaction data yet.</p>
-          {% endif %}
+          <h2 class="h5 mb-1">Category breakdown</h2>
+          <p class="text-muted mb-3">Content inventory and engagement by topic area.</p>
+          <div class="vstack gap-3">
+            {% for category in dashboard.category_metrics %}
+              <div class="dashboard-breakdown">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <strong>{{ category.category }}</strong>
+                  <span class="small text-muted">{{ category.post_count }} posts</span>
+                </div>
+                <div class="small text-muted">
+                  {{ category.view_count }} views
+                  · {{ category.recommendation_clicks }} rec clicks
+                  · {{ category.avg_dwell_time ~ 's avg dwell' if category.avg_dwell_time is not none else 'No dwell data yet' }}
+                </div>
+              </div>
+            {% else %}
+              <p class="text-muted mb-0">Categories will appear here once posts exist.</p>
+            {% endfor %}
+          </div>
         </div>
-      </section>
+      </div>
     </div>
 
-    <div class="col-12 col-lg-6">
-      <section class="card border-0 shadow-sm h-100">
+    <div class="col-12">
+      <div class="card border-0">
         <div class="card-body p-4">
-          <p class="text-uppercase text-muted fw-semibold small mb-2">SEO Snapshot</p>
-          <h2 class="h4 mb-3">Highest-scoring analyzed posts</h2>
-
-          {% if dashboard.seo_snapshots %}
-            <div class="d-grid gap-3">
-              {% for item in dashboard.seo_snapshots %}
-                <article class="border rounded-3 p-3 bg-light-subtle">
-                  <div class="d-flex justify-content-between gap-3 flex-wrap">
-                    <div>
-                      <a class="fw-semibold text-decoration-none" href="{{ url_for('posts.detail', post_id=item.post_id) }}">{{ item.title }}</a>
-                      <div class="small text-muted">{{ item.category }}</div>
-                    </div>
-                    <div class="text-end">
-                      <div class="fw-bold">{{ item.seo_score }}/100</div>
-                      <div class="small text-muted">Readability {{ item.readability_score }}</div>
-                    </div>
-                  </div>
-                </article>
-              {% endfor %}
+          <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div>
+              <h2 class="h5 mb-1">SEO quality detail</h2>
+              <p class="text-muted mb-0">Latest readable quality snapshot across stored posts.</p>
             </div>
-          {% else %}
-            <p class="text-muted mb-0">Run SEO analysis on a post to populate this section.</p>
-          {% endif %}
-        </div>
-      </section>
-    </div>
-
-    <div class="col-12 col-lg-6">
-      <section class="card border-0 shadow-sm h-100">
-        <div class="card-body p-4">
-          <p class="text-uppercase text-muted fw-semibold small mb-2">Recent Activity</p>
-          <h2 class="h4 mb-3">Latest reader signals</h2>
-
-          {% if dashboard.recent_activity %}
-            <div class="d-grid gap-3">
-              {% for item in dashboard.recent_activity %}
-                <article class="border rounded-3 p-3">
-                  <div class="d-flex justify-content-between gap-3 flex-wrap">
-                    <div>
-                      <a class="fw-semibold text-decoration-none" href="{{ url_for('posts.detail', post_id=item.post_id) }}">{{ item.title }}</a>
-                      <div class="small text-muted">{{ item.category }}</div>
-                    </div>
-                    <div class="small text-end text-muted">
-                      <div>{{ item.event_type.replace('_', ' ')|title }}</div>
-                      <div>{{ item.dwell_time or 0 }}s dwell</div>
-                    </div>
-                  </div>
-                </article>
-              {% endfor %}
+            <div class="small text-muted">
+              Avg readability:
+              {{ summary.avg_readability if summary.avg_readability is not none else 'N/A' }}
             </div>
-          {% else %}
-            <p class="text-muted mb-0">No recent activity yet.</p>
-          {% endif %}
+          </div>
+          <div class="table-responsive">
+            <table class="table align-middle dashboard-table mb-0">
+              <thead>
+                <tr>
+                  <th>Post</th>
+                  <th>Category</th>
+                  <th>SEO score</th>
+                  <th>Readability</th>
+                  <th>Words</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for seo in dashboard.seo_snapshot %}
+                  <tr>
+                    <td>
+                      <a class="fw-semibold text-decoration-none" href="{{ url_for('posts.detail', post_id=seo.post_id) }}">{{ seo.title }}</a>
+                    </td>
+                    <td>{{ seo.category }}</td>
+                    <td>{{ seo.seo_score if seo.seo_score is not none else 'N/A' }}</td>
+                    <td>{{ seo.readability_score if seo.readability_score is not none else 'N/A' }}</td>
+                    <td>{{ seo.word_count if seo.word_count is not none else 'N/A' }}</td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="5" class="text-muted">No SEO reports available yet.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </section>
+      </div>
     </div>
-  </div>
+  </section>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
-    (() => {
-      const categoryChart = document.getElementById("categoryChart");
-      if (!categoryChart) {
-        return;
-      }
+    const chartData = {{ dashboard.chart_data | tojson }};
 
-      const labels = {{ dashboard.category_interest | map(attribute='category') | list | tojson }};
-      const scores = {{ dashboard.category_interest | map(attribute='score') | list | tojson }};
+    const textColor = "#334155";
+    const gridColor = "rgba(148, 163, 184, 0.2)";
 
-      new Chart(categoryChart, {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [{
-            label: "Interest score",
-            data: scores,
-            backgroundColor: ["#0f766e", "#1d4ed8", "#d97706", "#475569", "#be123c", "#0f172a"],
-            borderRadius: 10,
-            borderSkipped: false,
-          }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
+    function makeBarChart(canvasId, config) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      new Chart(canvas, config);
+    }
+
+    makeBarChart("topPostsChart", {
+      type: "bar",
+      data: {
+        labels: chartData.top_posts.labels,
+        datasets: [
+          {
+            label: "Views",
+            data: chartData.top_posts.views,
+            backgroundColor: "#0f766e",
+            borderRadius: 8,
           },
-          scales: {
-            x: {
-              ticks: { color: "#475569" },
-              grid: { display: false },
-            },
-            y: {
-              beginAtZero: true,
-              ticks: { color: "#475569" },
-              grid: { color: "rgba(148, 163, 184, 0.2)" },
-            },
+          {
+            label: "Recommendation clicks",
+            data: chartData.top_posts.recommendation_clicks,
+            backgroundColor: "#f59e0b",
+            borderRadius: 8,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: textColor } },
+        },
+        scales: {
+          x: {
+            ticks: { color: textColor },
+            grid: { display: false },
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: textColor, precision: 0 },
+            grid: { color: gridColor },
           },
         },
-      });
-    })();
+      },
+    });
+
+    makeBarChart("categoryChart", {
+      type: "doughnut",
+      data: {
+        labels: chartData.categories.labels,
+        datasets: [{
+          data: chartData.categories.views,
+          backgroundColor: ["#0f766e", "#14b8a6", "#f59e0b", "#f97316", "#1d4ed8", "#8b5cf6"],
+          borderWidth: 0,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { color: textColor, boxWidth: 12 },
+          },
+        },
+      },
+    });
+
+    makeBarChart("recentActivityChart", {
+      type: "line",
+      data: {
+        labels: chartData.recent_activity.labels,
+        datasets: [
+          {
+            label: "Views",
+            data: chartData.recent_activity.views,
+            borderColor: "#0f766e",
+            backgroundColor: "rgba(15, 118, 110, 0.15)",
+            fill: true,
+            tension: 0.35,
+          },
+          {
+            label: "Recommendation clicks",
+            data: chartData.recent_activity.recommendation_clicks,
+            borderColor: "#f59e0b",
+            backgroundColor: "rgba(245, 158, 11, 0.12)",
+            fill: true,
+            tension: 0.35,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: textColor } },
+        },
+        scales: {
+          x: {
+            ticks: { color: textColor },
+            grid: { display: false },
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: textColor, precision: 0 },
+            grid: { color: gridColor },
+          },
+        },
+      },
+    });
+
+    makeBarChart("seoScoresChart", {
+      type: "bar",
+      data: {
+        labels: chartData.seo_scores.labels,
+        datasets: [{
+          label: "SEO score",
+          data: chartData.seo_scores.scores,
+          backgroundColor: "#1d4ed8",
+          borderRadius: 8,
+        }],
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            max: 100,
+            ticks: { color: textColor },
+            grid: { color: gridColor },
+          },
+          y: {
+            ticks: { color: textColor },
+            grid: { display: false },
+          },
+        },
+      },
+    });
   </script>
 {% endblock %}

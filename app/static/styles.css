@@ -306,6 +306,79 @@ a:hover {
   }
 }
 
+.dashboard-hero {
+  background:
+    radial-gradient(circle at top right, rgba(20, 184, 166, 0.16), transparent 34%),
+    linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
+  border: 1px solid var(--border-soft);
+  border-radius: 1.2rem;
+  padding: 2rem;
+}
+
+.text-dashboard-accent {
+  color: var(--primary);
+}
+
+.dashboard-callout {
+  border-radius: 1rem;
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 1.1rem 1.2rem;
+}
+
+.dashboard-stat {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.dashboard-stat__label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.dashboard-stat__value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-top: 0.45rem;
+}
+
+.dashboard-stat__meta {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin-top: 0.45rem;
+}
+
+.chart-shell {
+  position: relative;
+  min-height: 320px;
+}
+
+.chart-shell--compact {
+  min-height: 280px;
+}
+
+.dashboard-table thead th {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.dashboard-table tbody td {
+  border-color: rgba(219, 228, 238, 0.75);
+}
+
+.dashboard-breakdown {
+  background: var(--surface-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: 0.9rem;
+  padding: 0.95rem 1rem;
+}
+
 @media (max-width: 767px) {
   .hero-panel {
     padding: 1.4rem;
