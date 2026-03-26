@@ -3,42 +3,54 @@
 {% block title %}Home | AI Blogging Platform{% endblock %}
 
 {% block content %}
-  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-5">
     <div>
-      <p class="text-uppercase text-muted fw-semibold small mb-2">Reader View</p>
-      <h1 class="h2 mb-2">Latest posts</h1>
-      <p class="text-muted mb-0">Foundation listing page for browsing stored content.</p>
+      <span class="text-uppercase text-muted fw-bold small mb-2 d-block tracking-wider">Reader View</span>
+      <h1 class="display-5 fw-bold mb-2 text-dark">Latest posts</h1>
+      <p class="text-muted lead mb-0">Foundation listing page for browsing stored content.</p>
     </div>
-    <a class="btn btn-primary" href="{{ url_for('posts.create') }}">Create Post</a>
+    <a class="btn btn-primary btn-lg px-4 shadow-sm" href="{{ url_for('posts.create') }}">
+      <i class="bi bi-pencil-square me-2"></i>Create Post
+    </a>
   </div>
 
   <div class="row g-4">
     {% for post in posts %}
-      <div class="col-12 col-md-6">
-        <article class="card h-100 shadow-sm border-0">
-          <div class="card-body">
-            <div class="d-flex gap-2 align-items-center mb-3">
-              <span class="badge text-bg-dark">{{ post.category }}</span>
+      <div class="col-12 col-md-6 col-lg-4">
+        <article class="card h-100 border-0">
+          <div class="card-body p-4 d-flex flex-column">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <span class="badge bg-dark rounded-pill">{{ post.category }}</span>
               {% if post.updated_at %}
-                <small class="text-muted">Updated {{ post.updated_at.strftime('%b %d, %Y') }}</small>
+                <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ post.updated_at.strftime('%b %d, %Y') }}</small>
+              {% elif post.created_at %}
+                <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ post.created_at.strftime('%b %d, %Y') }}</small>
               {% endif %}
             </div>
-            <h2 class="h4">
-              <a class="text-decoration-none" href="{{ url_for('posts.detail', post_id=post.id) }}">{{ post.title }}</a>
+            <h2 class="h4 fw-bold mb-3" style="line-height: 1.4;">
+              <a class="text-dark text-decoration-none stretched-link" href="{{ url_for('posts.detail', post_id=post.id) }}">{{ post.title }}</a>
             </h2>
-            <p class="text-muted">{{ post.meta_description or post.content[:180] ~ '...' }}</p>
+            <p class="text-muted mb-4 flex-grow-1" style="font-size: 0.95rem;">{{ post.meta_description or post.content[:150] ~ '...' }}</p>
             {% if post.tags %}
-              <p class="small text-muted mb-0">Tags: {{ post.tags }}</p>
+              <div class="mt-auto pt-3 border-top border-light">
+                <p class="small text-muted mb-0 text-truncate">
+                  <i class="bi bi-tags me-1"></i> {{ post.tags }}
+                </p>
+              </div>
             {% endif %}
           </div>
         </article>
       </div>
     {% else %}
       <div class="col-12">
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 bg-white">
           <div class="card-body py-5 text-center">
-            <h2 class="h4">No posts yet</h2>
-            <p class="text-muted">Create the first post to start building the demo.</p>
+            <div class="mb-3 text-muted">
+              <i class="bi bi-journal-text" style="font-size: 3rem;"></i>
+            </div>
+            <h2 class="h4 fw-bold text-dark">No posts yet</h2>
+            <p class="text-muted mb-4">Create the first post to start building the demo.</p>
+            <a class="btn btn-primary px-4" href="{{ url_for('posts.create') }}">Create First Post</a>
           </div>
         </div>
       </div>

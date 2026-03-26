@@ -3,42 +3,73 @@
 {% block title %}{{ post.title }} | AI Blogging Platform{% endblock %}
 
 {% block content %}
-  <article class="mx-auto" style="max-width: 960px;">
-    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-      <span class="badge text-bg-dark">{{ post.category }}</span>
-      <small class="text-muted">Created {{ post.created_at.strftime('%b %d, %Y') }}</small>
-      <a class="btn btn-sm btn-outline-secondary ms-auto" href="{{ url_for('posts.edit', post_id=post.id) }}">Edit</a>
-      <form method="post" action="{{ url_for('posts.analyze', post_id=post.id) }}">
-        <button class="btn btn-sm btn-primary" type="submit">Run SEO Analysis</button>
-      </form>
-    </div>
+  <div class="mb-4">
+    <a href="{{ url_for('main.home') }}" class="btn btn-link link-secondary p-0 text-decoration-none small">
+      <i class="bi bi-arrow-left me-1"></i> Back to all posts
+    </a>
+  </div>
 
-    <h1 class="display-6 mb-3">{{ post.title }}</h1>
+  <article class="mx-auto" style="max-width: 860px;">
+    <header class="mb-5 text-center">
+      <div class="d-flex justify-content-center gap-2 align-items-center flex-wrap mb-3">
+        <span class="badge bg-primary rounded-pill px-3">{{ post.category }}</span>
+        <span class="text-muted small">&bull;</span>
+        <small class="text-muted">
+          <i class="bi bi-clock me-1"></i>
+          {% set word_count = post.content.split() | length %}
+          {% set reading_time = (word_count / 200) | round(0, 'ceil') | int %}
+          {{ reading_time }} min read
+        </small>
+        <span class="text-muted small">&bull;</span>
+        <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>{{ post.created_at.strftime('%b %d, %Y') }}</small>
+      </div>
 
-    {% if post.meta_description %}
-      <p class="lead text-muted">{{ post.meta_description }}</p>
-    {% endif %}
+      <h1 class="display-4 fw-bold mb-4 text-dark" style="line-height: 1.2;">{{ post.title }}</h1>
 
-    {% if post.tags %}
-      <p class="small text-muted">Tags: {{ post.tags }}</p>
-    {% endif %}
+      {% if post.meta_description %}
+        <p class="lead text-muted px-md-5">{{ post.meta_description }}</p>
+      {% endif %}
 
-    <div class="card border-0 shadow-sm">
-      <div class="card-body p-4">
+      <div class="mt-4 d-flex justify-content-center gap-2 flex-wrap">
+        <a class="btn btn-sm btn-outline-secondary rounded-pill px-3" href="{{ url_for('posts.edit', post_id=post.id) }}">
+          <i class="bi bi-pencil me-1"></i> Edit Post
+        </a>
+        <form method="post" action="{{ url_for('posts.analyze', post_id=post.id) }}">
+          <button class="btn btn-sm btn-primary rounded-pill px-3" type="submit">
+            <i class="bi bi-graph-up-arrow me-1"></i> Run SEO Analysis
+          </button>
+        </form>
+      </div>
+    </header>
+
+    <div class="card border-0 shadow-sm bg-white mb-5">
+      <div class="card-body p-4 p-md-5 fs-5 text-dark" style="line-height: 1.8;">
         {% for paragraph in post.content.split('\n') %}
           {% if paragraph.strip() %}
-            <p>{{ paragraph }}</p>
+            <p class="mb-4">{{ paragraph }}</p>
           {% endif %}
         {% endfor %}
       </div>
     </div>
 
-    <div class="mt-3">
+    {% if post.tags %}
+      <div class="d-flex align-items-center gap-2 text-muted mb-4 flex-wrap">
+        <i class="bi bi-tags-fill text-primary"></i>
+        <span class="fw-semibold small text-uppercase tracking-wider">Tags:</span>
+        <div class="d-flex flex-wrap gap-2">
+          {% for tag in post.tags.split(',') %}
+            <span class="badge bg-light text-dark border">{{ tag.strip() }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="mt-4">
       {% set analysis = latest_analysis %}
       {% include "posts/_seo_report.html" %}
       {% if not latest_analysis %}
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
+        <div class="card border-0 shadow-sm bg-white">
+          <div class="card-body p-4">
             <p class="text-uppercase text-muted fw-semibold small mb-2">SEO Analysis</p>
             <h2 class="h4 mb-2">No analysis yet</h2>
             <p class="text-muted mb-0">Use the button above to generate an SEO report for this post.</p>
