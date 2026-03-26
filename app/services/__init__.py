@@ -16,6 +16,7 @@ from app.services.similarity_service import (
     get_internal_link_suggestions,
     get_related_posts,
     get_related_posts_for_fields,
+    related_post_payload,
     similarity_service,
     suggest_internal_links,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "get_latest_seo_report",
     "get_related_posts",
     "get_related_posts_for_fields",
+    "related_post_payload",
     "save_post_analysis",
     "save_seo_report",
     "serialize_report",
