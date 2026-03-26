@@ -119,39 +119,26 @@ a:hover {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.hero-stat,
-.dashboard-kpi {
+.hero-stat {
   border: 1px solid var(--border-soft);
   border-radius: 1rem;
   background: rgba(255, 255, 255, 0.74);
   padding: 1rem;
 }
 
-.hero-stat strong,
-.dashboard-kpi strong {
+.hero-stat strong {
   display: block;
   font-size: 1.7rem;
   line-height: 1.1;
 }
 
-.hero-stat__label,
-.dashboard-kpi__label {
+.hero-stat__label {
   display: block;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted);
   margin-bottom: 0.4rem;
-}
-
-.dashboard-kpis {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.dashboard-kpi small {
-  color: var(--muted);
 }
 
 .author-layout {

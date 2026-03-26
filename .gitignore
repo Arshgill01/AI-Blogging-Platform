@@ -1,4 +1,9 @@
 __pycache__/
 *.py[cod]
+.pytest_cache/
 instance/
 .DS_Store
+.codex/
+AGENTS.md
+PLAN.md
+PLANS.md
