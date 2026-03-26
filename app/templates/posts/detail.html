@@ -44,7 +44,8 @@
 
     <div class="card border-0 shadow-sm bg-white mb-5">
       <div class="card-body p-4 p-md-5 fs-5 text-dark" style="line-height: 1.8;">
-        {% for paragraph in post.content.split('\n') %}
+        {% for paragraph in post.content.split('
+') %}
           {% if paragraph.strip() %}
             <p class="mb-4">{{ paragraph }}</p>
           {% endif %}
@@ -64,8 +65,8 @@
       </div>
     {% endif %}
 
-    {% include "posts/_related_posts.html" %}
     {% include "posts/_personalized_recommendations.html" %}
+    {% include "posts/_related_posts.html" %}
 
     <div class="mt-4">
       {% set analysis = latest_analysis %}
@@ -82,4 +83,48 @@
       {% endif %}
     </div>
   </article>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    (() => {
+      const startedAt = Date.now();
+      let sent = false;
+      const url = {{ url_for('posts.record_engagement', post_id=post.id) | tojson }};
+
+      function sendDwellTime() {
+        if (sent) {
+          return;
+        }
+
+        const dwellTimeSeconds = Math.round((Date.now() - startedAt) / 1000);
+        if (dwellTimeSeconds < 10) {
+          return;
+        }
+
+        sent = true;
+        const payload = JSON.stringify({ dwell_time_seconds: dwellTimeSeconds });
+
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(url, new Blob([payload], { type: "application/json" }));
+          return;
+        }
+
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+          keepalive: true,
+        });
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          sendDwellTime();
+        }
+      });
+      window.addEventListener("pagehide", sendDwellTime);
+    })();
+  </script>
 {% endblock %}

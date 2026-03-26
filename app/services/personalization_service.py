@@ -93,7 +93,7 @@ class PersonalizationService:
             .order_by(Interaction.timestamp.desc())
             .first()
         )
-        if recent_match and now - recent_match.timestamp <= DEDUPLICATION_WINDOW:
+        if recent_match and now - _normalize_timestamp(recent_match.timestamp) <= DEDUPLICATION_WINDOW:
             if dwell_time is not None and recent_match.dwell_time is None:
                 recent_match.dwell_time = dwell_time
                 db.session.commit()

@@ -1,3 +1,11 @@
+from app.services.personalization_service import (
+    PersonalizationService,
+    ensure_reader_session,
+    get_personalized_recommendations,
+    personalization_service,
+    record_post_view,
+    record_recommendation_click,
+)
 from app.services.seo_service import (
     SEOAnalyzer,
     analyze_post,
@@ -9,14 +17,6 @@ from app.services.seo_service import (
     save_post_analysis,
     save_seo_report,
     serialize_report,
-)
-from app.services.personalization_service import (
-    PersonalizationService,
-    ensure_reader_session,
-    get_personalized_recommendations,
-    personalization_service,
-    record_post_view,
-    record_recommendation_click,
 )
 from app.services.similarity_service import (
     SimilarityService,

@@ -2,34 +2,35 @@
   <div class="card-body p-4">
     <div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
       <div>
-        <p class="text-uppercase text-muted fw-semibold small mb-2">Personalized Picks</p>
-        <h2 class="h4 mb-0">Recommended from your reading</h2>
+        <p class="text-uppercase text-muted fw-semibold small mb-2">Reader Personalization</p>
+        <h2 class="h4 mb-2">Recommended from your reading</h2>
+        <p class="text-muted mb-0">Behavior-driven suggestions based on this anonymous session.</p>
       </div>
+      {% set is_cold_start = personalized_recommendations and (personalized_recommendations | selectattr('is_cold_start') | list | length == personalized_recommendations | length) %}
+      <span class="badge rounded-pill {{ 'text-bg-light border text-dark' if is_cold_start else 'text-bg-primary' }}">
+        {{ 'Cold start' if is_cold_start else 'Behavior-based' }}
+      </span>
     </div>
 
     {% if personalized_recommendations %}
       <div class="row g-3">
         {% for item in personalized_recommendations %}
-          <div class="col-12 col-md-6">
+          <div class="col-12 col-md-6 {% if request.endpoint == 'posts.detail' %}col-lg-4{% endif %}">
             <article class="h-100 border rounded-3 p-3">
               <div class="d-flex align-items-center gap-2 flex-wrap mb-2 small text-muted">
                 <span class="badge text-bg-light border">{{ item.category }}</span>
-                <span>Score {{ '%.2f' | format(item.score) }}</span>
                 {% if item.already_viewed %}
-                  <span>Viewed before</span>
+                  <span>Seen before</span>
+                {% else %}
+                  <span>New for this session</span>
                 {% endif %}
               </div>
               <h3 class="h6 mb-2">
-                <a
-                  class="text-dark text-decoration-none"
-                  href="{{ url_for('posts.detail', post_id=item.post_id, ref='personalized') }}"
-                >{{ item.title }}</a>
+                <a class="text-dark text-decoration-none" href="{{ url_for('posts.detail', post_id=item.post_id, ref='personalized') }}">{{ item.title }}</a>
               </h3>
-              <p class="text-muted small mb-3">
-                {{ item.meta_description or item.post.content[:150] ~ '...' }}
-              </p>
+              <p class="text-muted small mb-3">{{ item.meta_description or item.post.content[:150] ~ '...' }}</p>
               {% if item.reasons %}
-                <p class="small text-muted mb-0">{{ item.reasons | join(' • ') }}</p>
+                <p class="small mb-0 text-primary-emphasis">{{ item.reasons | join(' • ') }}</p>
               {% endif %}
             </article>
           </div>
