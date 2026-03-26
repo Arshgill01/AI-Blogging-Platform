@@ -9,7 +9,7 @@ from app.services.seo_service import (
     get_latest_post_analysis,
     save_post_analysis,
 )
-from app.services.similarity_service import get_related_posts, suggest_internal_links
+from app.services.similarity_service import get_internal_link_suggestions, get_related_posts
 
 
 posts_bp = Blueprint("posts", __name__, url_prefix="/posts")
@@ -54,31 +54,46 @@ def _apply_form_to_post(post, form_state):
     return post
 
 
-def _render_post_form(form_title, post_form, analysis=None):
+def _build_author_similarity_context(post):
+    if post is None or getattr(post, "id", None) is None:
+        return []
+    return get_internal_link_suggestions(post, limit=4)
+
+
+def _render_post_form(form_title, post_form, analysis=None, internal_link_suggestions=None):
     return render_template(
         "posts/form.html",
         post=post_form,
         form_title=form_title,
         analysis=analysis,
         is_edit=bool(getattr(post_form, "id", None)),
+        internal_link_suggestions=internal_link_suggestions or [],
     )
 
 
 @posts_bp.route("/<int:post_id>")
 def detail(post_id):
-    post = Post.query.get_or_404(post_id)
+    post = db.get_or_404(Post, post_id)
+    latest_analysis = get_latest_post_analysis(post)
     related_posts = get_related_posts(post, limit=3)
+    internal_link_suggestions = (
+        latest_analysis.get("internal_links")
+        if latest_analysis and latest_analysis.get("internal_links")
+        else get_internal_link_suggestions(post, limit=4)
+    )
     return render_template(
         "posts/detail.html",
         post=post,
-        latest_analysis=get_latest_post_analysis(post),
+        latest_analysis=latest_analysis,
         related_posts=related_posts,
+        internal_link_suggestions=internal_link_suggestions,
     )
 
 
 @posts_bp.route("/<int:post_id>/analyze", methods=["POST"])
 def analyze(post_id):
-    post = Post.query.get_or_404(post_id)
+    post = db.get_or_404(Post, post_id)
+    internal_link_suggestions = get_internal_link_suggestions(post, limit=4)
     analysis = analyze_post_fields(
         title=post.title,
         content=post.content,
@@ -86,8 +101,7 @@ def analyze(post_id):
         tags=post.tags,
         category=post.category,
     )
-    internal_links = suggest_internal_links(post, limit=5)
-    save_post_analysis(post, analysis, internal_links=internal_links)
+    save_post_analysis(post, analysis, internal_links=internal_link_suggestions)
     flash("SEO analysis refreshed for this post.", "success")
     return redirect(url_for("posts.detail", post_id=post.id))
 
@@ -109,6 +123,7 @@ def create():
         db.session.commit()
 
         if action == "analyze":
+            internal_link_suggestions = get_internal_link_suggestions(post, limit=4)
             analysis = analyze_post_fields(
                 title=post.title,
                 content=post.content,
@@ -116,8 +131,7 @@ def create():
                 tags=post.tags,
                 category=post.category,
             )
-            internal_links = suggest_internal_links(post, limit=5)
-            save_post_analysis(post, analysis, internal_links=internal_links)
+            save_post_analysis(post, analysis, internal_links=internal_link_suggestions)
             flash("Post created and SEO analysis generated.", "success")
             return redirect(url_for("posts.edit", post_id=post.id))
 
@@ -129,8 +143,9 @@ def create():
 
 @posts_bp.route("/<int:post_id>/edit", methods=["GET", "POST"])
 def edit(post_id):
-    post = Post.query.get_or_404(post_id)
+    post = db.get_or_404(Post, post_id)
     post_form = _post_form_state(post)
+    internal_link_suggestions = _build_author_similarity_context(post)
 
     if request.method == "POST":
         action = request.form.get("action", "save")
@@ -142,10 +157,12 @@ def edit(post_id):
                 "Edit Post",
                 post_form,
                 analysis=get_latest_post_analysis(post),
+                internal_link_suggestions=internal_link_suggestions,
             )
 
         _apply_form_to_post(post, post_form)
         db.session.commit()
+        internal_link_suggestions = _build_author_similarity_context(post)
 
         if action == "analyze":
             analysis = analyze_post_fields(
@@ -155,12 +172,16 @@ def edit(post_id):
                 tags=post.tags,
                 category=post.category,
             )
-            internal_links = suggest_internal_links(post, limit=5)
-            save_post_analysis(post, analysis, internal_links=internal_links)
+            save_post_analysis(post, analysis, internal_links=internal_link_suggestions)
             flash("Post updated and SEO analysis generated.", "success")
             return redirect(url_for("posts.edit", post_id=post.id))
 
         flash("Post updated.", "success")
         return redirect(url_for("posts.detail", post_id=post.id))
 
-    return _render_post_form("Edit Post", post_form, analysis=get_latest_post_analysis(post))
+    return _render_post_form(
+        "Edit Post",
+        post_form,
+        analysis=get_latest_post_analysis(post),
+        internal_link_suggestions=internal_link_suggestions,
+    )

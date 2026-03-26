@@ -1,0 +1,47 @@
+<section class="card border-0 shadow-sm mt-4">
+  <div class="card-body">
+    <p class="text-uppercase text-muted fw-semibold small mb-2">Internal Link Suggestions</p>
+    <h2 class="h4 mb-2">Related posts to reference</h2>
+    <p class="text-muted small mb-4">Use nearby posts from your own library to strengthen topic clusters and keep readers moving.</p>
+
+    {% if internal_link_suggestions %}
+      <div class="d-grid gap-3">
+        {% for item in internal_link_suggestions %}
+          <article class="border rounded-3 p-3 bg-light-subtle">
+            <div class="d-flex justify-content-between align-items-start gap-3 mb-2 flex-wrap">
+              <div>
+                <h3 class="h6 mb-1">
+                  <a class="text-decoration-none" href="{{ url_for('posts.detail', post_id=item.post_id) }}">{{ item.title }}</a>
+                </h3>
+                <div class="d-flex gap-2 align-items-center flex-wrap small text-muted">
+                  <span class="badge text-bg-light border">{{ item.category }}</span>
+                  <span>{{ item.similarity_percent }}% topical overlap</span>
+                  {% if item.category_match %}
+                    <span>Same category</span>
+                  {% endif %}
+                </div>
+              </div>
+              <a class="btn btn-sm btn-outline-secondary rounded-pill" href="{{ url_for('posts.edit', post_id=item.post_id) }}">
+                Review
+              </a>
+            </div>
+
+            {% if item.shared_terms %}
+              <p class="small mb-2">
+                <span class="text-muted">Shared themes:</span>
+                {{ item.shared_terms | join(', ') }}
+              </p>
+            {% endif %}
+
+            <p class="small mb-0">
+              <span class="text-muted">Suggested anchor:</span>
+              <strong>{{ item.anchor_hint }}</strong>
+            </p>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted mb-0">Save a few more posts to unlock internal link suggestions for this draft.</p>
+    {% endif %}
+  </div>
+</section>

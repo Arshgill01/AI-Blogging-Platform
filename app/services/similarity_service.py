@@ -7,14 +7,77 @@ from app.models import Post, utcnow
 
 
 TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9'-]+")
+STOPWORDS = {
+    "about",
+    "after",
+    "again",
+    "also",
+    "because",
+    "before",
+    "being",
+    "between",
+    "both",
+    "could",
+    "does",
+    "each",
+    "every",
+    "from",
+    "have",
+    "into",
+    "just",
+    "like",
+    "more",
+    "most",
+    "much",
+    "only",
+    "other",
+    "over",
+    "same",
+    "should",
+    "some",
+    "such",
+    "than",
+    "that",
+    "their",
+    "them",
+    "then",
+    "there",
+    "these",
+    "they",
+    "this",
+    "those",
+    "through",
+    "very",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+    "with",
+    "would",
+    "your",
+}
 
 
 def _tokenize(text):
-    return [match.group(0).lower() for match in TOKEN_RE.finditer(text or "")]
+    return [
+        match.group(0).lower()
+        for match in TOKEN_RE.finditer(text or "")
+        if len(match.group(0)) >= 3 and match.group(0).lower() not in STOPWORDS
+    ]
 
 
 def _split_tags(tags):
     return [tag.strip() for tag in (tags or "").split(",") if tag.strip()]
+
+
+def _content_preview(content, limit=160):
+    cleaned = " ".join((content or "").split())
+    if not cleaned:
+        return ""
+    if len(cleaned) <= limit:
+        return cleaned
+    return f"{cleaned[:limit].rstrip()}..."
 
 
 def build_post_document(*, title="", content="", category="", tags=""):
@@ -81,6 +144,14 @@ def _cosine_similarity(left, right):
     return numerator / (left_norm * right_norm)
 
 
+def _shared_terms(source_vector, candidate_vector, limit=3):
+    shared = []
+    for term in set(source_vector) & set(candidate_vector):
+        shared.append((term, source_vector[term] + candidate_vector[term]))
+    shared.sort(key=lambda item: item[1], reverse=True)
+    return [term for term, _ in shared[:limit]]
+
+
 def _recency_boost(post):
     timestamp = getattr(post, "updated_at", None) or getattr(post, "created_at", None)
     if timestamp is None:
@@ -93,7 +164,15 @@ def _recency_boost(post):
     return freshness * 0.03
 
 
-def _serialize_related_post(post, *, cosine_score, score, shared_tags, category_match):
+def _serialize_related_post(
+    post,
+    *,
+    cosine_score,
+    score,
+    shared_tags,
+    shared_terms,
+    category_match,
+):
     reasons = []
     if category_match:
         reasons.append("same-category")
@@ -102,15 +181,26 @@ def _serialize_related_post(post, *, cosine_score, score, shared_tags, category_
     if cosine_score > 0:
         reasons.append("content-overlap")
 
+    anchor_hint = ", ".join(shared_tags[:2] or shared_terms[:2]) or post.title
+
     return {
         "post_id": post.id,
         "title": post.title,
         "category": post.category,
         "tags": _split_tags(post.tags),
-        "similarity_score": round(cosine_score, 4),
-        "score": round(score, 4),
         "shared_tags": shared_tags,
+        "shared_terms": shared_terms,
+        "category_match": category_match,
         "reason_codes": reasons,
+        "similarity_score": round(cosine_score, 4),
+        "similarity_percent": max(1, min(100, round(cosine_score * 100))),
+        "score": round(score, 4),
+        "anchor_hint": anchor_hint,
+        "meta_description": post.meta_description or "",
+        "content_preview": _content_preview(post.content),
+        "updated_at": post.updated_at.isoformat()
+        if post.updated_at
+        else (post.created_at.isoformat() if post.created_at else None),
     }
 
 
@@ -196,6 +286,7 @@ class SimilarityService:
             candidate_category = (post.category or "").strip().lower()
             candidate_tags = {tag.lower() for tag in _split_tags(post.tags)}
             shared_tags = sorted(target_tags.intersection(candidate_tags))
+            shared_terms = _shared_terms(target_vector, candidate_vector)
             category_match = bool(target_category and candidate_category and target_category == candidate_category)
 
             score = cosine_score
@@ -213,6 +304,7 @@ class SimilarityService:
                 cosine_score=cosine_score,
                 score=score,
                 shared_tags=shared_tags,
+                shared_terms=shared_terms,
                 category_match=category_match,
             )
             if _is_strong_match(
@@ -273,3 +365,7 @@ def suggest_internal_links(post, *, limit=5, candidate_posts=None):
         limit=limit,
         candidate_posts=candidate_posts,
     )
+
+
+def get_internal_link_suggestions(post, limit=4):
+    return suggest_internal_links(post, limit=limit)
