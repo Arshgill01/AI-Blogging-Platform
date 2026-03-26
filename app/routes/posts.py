@@ -1,9 +1,13 @@
 from types import SimpleNamespace
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
 from app import db
 from app.models import Post
+from app.services.personalization_service import (
+    get_personalized_recommendations,
+    log_reader_event,
+)
 from app.services.seo_service import (
     analyze_post_fields,
     get_latest_post_analysis,
@@ -74,8 +78,13 @@ def _render_post_form(form_title, post_form, analysis=None, internal_link_sugges
 @posts_bp.route("/<int:post_id>")
 def detail(post_id):
     post = db.get_or_404(Post, post_id)
+    if request.args.get("recommended") == "1":
+        log_reader_event(post, "recommendation_click")
+    log_reader_event(post, "page_view")
+
     latest_analysis = get_latest_post_analysis(post)
     related_posts = get_related_posts(post, limit=3)
+    personalized_recommendations = get_personalized_recommendations(post, limit=3)
     internal_link_suggestions = (
         latest_analysis.get("internal_links")
         if latest_analysis and latest_analysis.get("internal_links")
@@ -86,8 +95,21 @@ def detail(post_id):
         post=post,
         latest_analysis=latest_analysis,
         related_posts=related_posts,
+        personalized_recommendations=personalized_recommendations,
         internal_link_suggestions=internal_link_suggestions,
     )
+
+
+@posts_bp.route("/<int:post_id>/engagement", methods=["POST"])
+def record_engagement(post_id):
+    post = db.get_or_404(Post, post_id)
+    payload = request.get_json(silent=True) or {}
+    dwell_time = payload.get("dwell_time_seconds")
+    if dwell_time is None:
+        return jsonify({"status": "ignored"}), 202
+
+    log_reader_event(post, "dwell_time", dwell_time=dwell_time)
+    return ("", 204)
 
 
 @posts_bp.route("/<int:post_id>/analyze", methods=["POST"])

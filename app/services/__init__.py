@@ -1,3 +1,8 @@
+from app.services.personalization_service import (
+    ensure_reader_session,
+    get_personalized_recommendations,
+    log_reader_event,
+)
 from app.services.seo_service import (
     SEOAnalyzer,
     analyze_post,
@@ -29,11 +34,14 @@ __all__ = [
     "analyze_post_record",
     "build_post_document",
     "deserialize_seo_report",
+    "ensure_reader_session",
+    "get_personalized_recommendations",
     "get_internal_link_suggestions",
     "get_latest_post_analysis",
     "get_latest_seo_report",
     "get_related_posts",
     "get_related_posts_for_fields",
+    "log_reader_event",
     "related_post_payload",
     "save_post_analysis",
     "save_seo_report",

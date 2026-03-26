@@ -64,6 +64,7 @@
       </div>
     {% endif %}
 
+    {% include "posts/_personalized_recommendations.html" %}
     {% include "posts/_related_posts.html" %}
 
     <div class="mt-4">
@@ -81,4 +82,48 @@
       {% endif %}
     </div>
   </article>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    (() => {
+      const startedAt = Date.now();
+      let sent = false;
+      const url = {{ url_for('posts.record_engagement', post_id=post.id) | tojson }};
+
+      function sendDwellTime() {
+        if (sent) {
+          return;
+        }
+
+        const dwellTimeSeconds = Math.round((Date.now() - startedAt) / 1000);
+        if (dwellTimeSeconds < 10) {
+          return;
+        }
+
+        sent = true;
+        const payload = JSON.stringify({ dwell_time_seconds: dwellTimeSeconds });
+
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(url, new Blob([payload], { type: "application/json" }));
+          return;
+        }
+
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+          keepalive: true,
+        });
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          sendDwellTime();
+        }
+      });
+      window.addEventListener("pagehide", sendDwellTime);
+    })();
+  </script>
 {% endblock %}
