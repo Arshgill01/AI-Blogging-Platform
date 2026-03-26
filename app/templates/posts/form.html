@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ form_title }} | AI Blogging Platform{% endblock %}
+{% block title %}{{ form_title }} | WaveBlog AI{% endblock %}
 
 {% block content %}
   <div class="mx-auto" style="max-width: 1120px;">
@@ -67,6 +67,15 @@
       </form>
 
       <div class="seo-report-slot">
+        {% if not analysis %}
+          <section class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+              <p class="text-uppercase text-muted fw-semibold small mb-2">SEO Analysis</p>
+              <h2 class="h4 mb-2">Generate feedback from the author flow</h2>
+              <p class="text-muted mb-0">Use <strong>Save + Analyze SEO</strong> to store the draft, score the content, and refresh internal link suggestions without leaving this page.</p>
+            </div>
+          </section>
+        {% endif %}
         {% include "posts/_seo_report.html" %}
         {% include "posts/_internal_link_suggestions.html" %}
       </div>

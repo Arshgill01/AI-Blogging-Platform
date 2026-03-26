@@ -4,7 +4,7 @@
       <div>
         <p class="text-uppercase text-muted fw-semibold small mb-2">Reader Personalization</p>
         <h2 class="h4 mb-2">Recommended from your reading</h2>
-        <p class="text-muted mb-0">Behavior-driven suggestions based on this anonymous session.</p>
+        <p class="text-muted mb-0">Behavior-driven suggestions based on this anonymous session and the seeded interaction history.</p>
       </div>
       {% set is_cold_start = personalized_recommendations and (personalized_recommendations | selectattr('is_cold_start') | list | length == personalized_recommendations | length) %}
       <span class="badge rounded-pill {{ 'text-bg-light border text-dark' if is_cold_start else 'text-bg-primary' }}">
@@ -37,7 +37,7 @@
         {% endfor %}
       </div>
     {% else %}
-      <p class="text-muted mb-0">Recommendations will appear as readers build session history.</p>
+      <p class="text-muted mb-0">Recommendations will appear as readers build session history. Open a few posts to watch this section adapt.</p>
     {% endif %}
   </div>
 </section>

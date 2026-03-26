@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | WaveBlog AI{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
+    <div>
+      <span class="text-uppercase text-primary fw-bold small mb-2 d-block tracking-wider">Admin View</span>
+      <h1 class="display-6 fw-bold mb-2 text-dark">Analytics Dashboard</h1>
+      <p class="text-muted mb-0">Track engagement, content quality, and recommendation activity from the same seeded product data.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('main.home') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-house me-1"></i>Reader Home
+      </a>
+      <a href="{{ url_for('posts.create') }}" class="btn btn-primary">
+        <i class="bi bi-pencil-square me-1"></i>New Draft
+      </a>
+    </div>
+  </div>
+
+  <section class="dashboard-kpis mb-4">
+    <article class="dashboard-kpi">
+      <span class="dashboard-kpi__label">Total posts</span>
+      <strong>{{ dashboard.summary.total_posts }}</strong>
+      <small>{{ dashboard.summary.seo_coverage }}% with SEO coverage</small>
+    </article>
+    <article class="dashboard-kpi">
+      <span class="dashboard-kpi__label">Interactions</span>
+      <strong>{{ dashboard.summary.total_interactions }}</strong>
+      <small>{{ dashboard.summary.recommendation_clicks }} recommendation clicks</small>
+    </article>
+    <article class="dashboard-kpi">
+      <span class="dashboard-kpi__label">Reader sessions</span>
+      <strong>{{ dashboard.summary.total_sessions }}</strong>
+      <small>Seeded and live browsing activity combined</small>
+    </article>
+    <article class="dashboard-kpi">
+      <span class="dashboard-kpi__label">Avg. dwell time</span>
+      <strong>{{ dashboard.summary.avg_dwell_time }}s</strong>
+      <small>Across tracked page views</small>
+    </article>
+    <article class="dashboard-kpi">
+      <span class="dashboard-kpi__label">Avg. SEO score</span>
+      <strong>{{ dashboard.summary.average_seo_score }}</strong>
+      <small>{{ dashboard.summary.top_category or "No category leader yet" }}</small>
+    </article>
+  </section>
+
+  <div class="row g-4">
+    <div class="col-12 col-xl-7">
+      <section class="card border-0 shadow-sm h-100">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
+            <div>
+              <p class="text-uppercase text-muted fw-semibold small mb-2">Top Content</p>
+              <h2 class="h4 mb-0">Most engaged posts</h2>
+            </div>
+          </div>
+
+          {% if dashboard.top_posts %}
+            <div class="table-responsive">
+              <table class="table align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Post</th>
+                    <th>Views</th>
+                    <th>Clicks</th>
+                    <th>Avg. dwell</th>
+                    <th>SEO</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in dashboard.top_posts %}
+                    <tr>
+                      <td>
+                        <a class="fw-semibold text-decoration-none" href="{{ url_for('posts.detail', post_id=item.post_id) }}">{{ item.title }}</a>
+                        <div class="small text-muted">{{ item.category }}</div>
+                      </td>
+                      <td>{{ item.view_count }}</td>
+                      <td>{{ item.recommendation_clicks }}</td>
+                      <td>{{ item.avg_dwell_time }}s</td>
+                      <td>{{ item.seo_score if item.seo_score is not none else "N/A" }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <p class="text-muted mb-0">No post engagement yet. Browse a few articles to populate this table.</p>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    <div class="col-12 col-xl-5">
+      <section class="card border-0 shadow-sm h-100">
+        <div class="card-body p-4">
+          <p class="text-uppercase text-muted fw-semibold small mb-2">Audience Interest</p>
+          <h2 class="h4 mb-3">Category momentum</h2>
+
+          {% if dashboard.category_interest %}
+            <canvas id="categoryChart" height="280"></canvas>
+          {% else %}
+            <p class="text-muted mb-0">No category interaction data yet.</p>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <section class="card border-0 shadow-sm h-100">
+        <div class="card-body p-4">
+          <p class="text-uppercase text-muted fw-semibold small mb-2">SEO Snapshot</p>
+          <h2 class="h4 mb-3">Highest-scoring analyzed posts</h2>
+
+          {% if dashboard.seo_snapshots %}
+            <div class="d-grid gap-3">
+              {% for item in dashboard.seo_snapshots %}
+                <article class="border rounded-3 p-3 bg-light-subtle">
+                  <div class="d-flex justify-content-between gap-3 flex-wrap">
+                    <div>
+                      <a class="fw-semibold text-decoration-none" href="{{ url_for('posts.detail', post_id=item.post_id) }}">{{ item.title }}</a>
+                      <div class="small text-muted">{{ item.category }}</div>
+                    </div>
+                    <div class="text-end">
+                      <div class="fw-bold">{{ item.seo_score }}/100</div>
+                      <div class="small text-muted">Readability {{ item.readability_score }}</div>
+                    </div>
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-muted mb-0">Run SEO analysis on a post to populate this section.</p>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <section class="card border-0 shadow-sm h-100">
+        <div class="card-body p-4">
+          <p class="text-uppercase text-muted fw-semibold small mb-2">Recent Activity</p>
+          <h2 class="h4 mb-3">Latest reader signals</h2>
+
+          {% if dashboard.recent_activity %}
+            <div class="d-grid gap-3">
+              {% for item in dashboard.recent_activity %}
+                <article class="border rounded-3 p-3">
+                  <div class="d-flex justify-content-between gap-3 flex-wrap">
+                    <div>
+                      <a class="fw-semibold text-decoration-none" href="{{ url_for('posts.detail', post_id=item.post_id) }}">{{ item.title }}</a>
+                      <div class="small text-muted">{{ item.category }}</div>
+                    </div>
+                    <div class="small text-end text-muted">
+                      <div>{{ item.event_type.replace('_', ' ')|title }}</div>
+                      <div>{{ item.dwell_time or 0 }}s dwell</div>
+                    </div>
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-muted mb-0">No recent activity yet.</p>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    (() => {
+      const categoryChart = document.getElementById("categoryChart");
+      if (!categoryChart) {
+        return;
+      }
+
+      const labels = {{ dashboard.category_interest | map(attribute='category') | list | tojson }};
+      const scores = {{ dashboard.category_interest | map(attribute='score') | list | tojson }};
+
+      new Chart(categoryChart, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Interest score",
+            data: scores,
+            backgroundColor: ["#0f766e", "#1d4ed8", "#d97706", "#475569", "#be123c", "#0f172a"],
+            borderRadius: 10,
+            borderSkipped: false,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+          },
+          scales: {
+            x: {
+              ticks: { color: "#475569" },
+              grid: { display: false },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { color: "#475569" },
+              grid: { color: "rgba(148, 163, 184, 0.2)" },
+            },
+          },
+        },
+      });
+    })();
+  </script>
+{% endblock %}

@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template
 
 from app.models import Post
+from app.services.analytics_service import get_home_snapshot
 from app.services.personalization_service import (
     ensure_reader_session,
     get_personalized_recommendations,
@@ -15,8 +16,10 @@ def home():
     session_token = ensure_reader_session()
     posts = Post.query.order_by(Post.created_at.desc()).all()
     personalized_recommendations = get_personalized_recommendations(session_token, limit=4)
+    home_snapshot = get_home_snapshot()
     return render_template(
         "home.html",
         posts=posts,
         personalized_recommendations=personalized_recommendations,
+        home_snapshot=home_snapshot,
     )

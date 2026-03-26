@@ -1,17 +1,52 @@
 {% extends "base.html" %}
 
-{% block title %}Home | AI Blogging Platform{% endblock %}
+{% block title %}Home | WaveBlog AI{% endblock %}
 
 {% block content %}
-  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-5">
+  <section class="hero-panel mb-5">
+    <div class="row g-4 align-items-end">
+      <div class="col-lg-8">
+        <span class="text-uppercase text-light-emphasis fw-bold small mb-2 d-block tracking-wider">Integrated Demo</span>
+        <h1 class="display-4 fw-bold mb-3">One blogging workflow from draft to reader insight.</h1>
+        <p class="lead mb-4 text-light-emphasis">Create a post, run SEO analysis, suggest internal links, browse the reader experience, and open a dashboard backed by seeded activity.</p>
+        <div class="d-flex gap-3 flex-wrap">
+          <a class="btn btn-dark btn-lg px-4 shadow-sm" href="{{ url_for('posts.create') }}">
+            <i class="bi bi-pencil-square me-2"></i>Create Post
+          </a>
+          <a class="btn btn-outline-dark btn-lg px-4" href="{{ url_for('analytics.dashboard') }}">
+            <i class="bi bi-bar-chart-line me-2"></i>Open Dashboard
+          </a>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat__label">Posts</span>
+            <strong>{{ home_snapshot.total_posts }}</strong>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat__label">Seeded sessions</span>
+            <strong>{{ home_snapshot.total_sessions }}</strong>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat__label">Avg. SEO</span>
+            <strong>{{ home_snapshot.average_seo_score }}</strong>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat__label">Top category</span>
+            <strong>{{ home_snapshot.top_category or "Waiting for traffic" }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
     <div>
       <span class="text-uppercase text-muted fw-bold small mb-2 d-block tracking-wider">Reader View</span>
-      <h1 class="display-5 fw-bold mb-2 text-dark">Latest posts</h1>
-      <p class="text-muted lead mb-0">Foundation listing page for browsing stored content.</p>
+      <h2 class="display-6 fw-bold mb-2 text-dark">Browse the content library</h2>
+      <p class="text-muted mb-0">Open any post to generate fresh interactions, related-post retrieval, and session-based recommendations.</p>
     </div>
-    <a class="btn btn-primary btn-lg px-4 shadow-sm" href="{{ url_for('posts.create') }}">
-      <i class="bi bi-pencil-square me-2"></i>Create Post
-    </a>
   </div>
 
   {% include "posts/_personalized_recommendations.html" %}

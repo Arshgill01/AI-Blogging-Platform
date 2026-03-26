@@ -21,6 +21,25 @@ from app.services.similarity_service import get_internal_link_suggestions, get_r
 posts_bp = Blueprint("posts", __name__, url_prefix="/posts")
 
 
+def _content_blocks(content):
+    blocks = []
+    for raw_block in (content or "").split("\n\n"):
+        block = raw_block.strip()
+        if not block:
+            continue
+
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if len(lines) == 1 and lines[0].startswith("#"):
+            heading = lines[0].lstrip("#").strip()
+            if heading:
+                blocks.append({"type": "heading", "text": heading})
+            continue
+
+        blocks.append({"type": "paragraph", "text": " ".join(lines)})
+
+    return blocks
+
+
 def _post_form_state(source_post=None):
     if source_post is None:
         return SimpleNamespace(
@@ -100,6 +119,7 @@ def detail(post_id):
     return render_template(
         "posts/detail.html",
         post=post,
+        content_blocks=_content_blocks(post.content),
         latest_analysis=latest_analysis,
         related_posts=related_posts,
         personalized_recommendations=personalized_recommendations,
