@@ -64,9 +64,12 @@
       </div>
     {% endif %}
 
+    {% include "posts/_related_posts.html" %}
+
     <div class="mt-4">
       {% set analysis = latest_analysis %}
       {% include "posts/_seo_report.html" %}
+      {% include "posts/_internal_link_suggestions.html" %}
       {% if not latest_analysis %}
         <div class="card border-0 shadow-sm bg-white">
           <div class="card-body p-4">
