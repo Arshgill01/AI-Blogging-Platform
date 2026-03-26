@@ -10,10 +10,19 @@ from app.services.seo_service import (
     save_seo_report,
     serialize_report,
 )
+from app.services.personalization_service import (
+    PersonalizationService,
+    ensure_reader_session,
+    get_personalized_recommendations,
+    personalization_service,
+    record_post_view,
+    record_recommendation_click,
+)
 from app.services.similarity_service import (
     SimilarityService,
     build_post_document,
     get_internal_link_suggestions,
+    get_post_similarity_scores,
     get_related_posts,
     get_related_posts_for_fields,
     related_post_payload,
@@ -22,6 +31,7 @@ from app.services.similarity_service import (
 )
 
 __all__ = [
+    "PersonalizationService",
     "SEOAnalyzer",
     "SimilarityService",
     "analyze_post",
@@ -29,12 +39,18 @@ __all__ = [
     "analyze_post_record",
     "build_post_document",
     "deserialize_seo_report",
+    "ensure_reader_session",
     "get_internal_link_suggestions",
+    "get_personalized_recommendations",
+    "get_post_similarity_scores",
     "get_latest_post_analysis",
     "get_latest_seo_report",
     "get_related_posts",
     "get_related_posts_for_fields",
+    "personalization_service",
     "related_post_payload",
+    "record_post_view",
+    "record_recommendation_click",
     "save_post_analysis",
     "save_seo_report",
     "serialize_report",
