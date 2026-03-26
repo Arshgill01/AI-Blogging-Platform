@@ -9,6 +9,7 @@ from app.services.seo_service import (
     get_latest_post_analysis,
     save_post_analysis,
 )
+from app.services.similarity_service import get_related_posts, related_post_payload
 
 
 posts_bp = Blueprint("posts", __name__, url_prefix="/posts")
@@ -65,17 +66,19 @@ def _render_post_form(form_title, post_form, analysis=None):
 
 @posts_bp.route("/<int:post_id>")
 def detail(post_id):
-    post = Post.query.get_or_404(post_id)
+    post = db.get_or_404(Post, post_id)
+    related_posts = get_related_posts(post)
     return render_template(
         "posts/detail.html",
         post=post,
         latest_analysis=get_latest_post_analysis(post),
+        related_posts=related_posts,
     )
 
 
 @posts_bp.route("/<int:post_id>/analyze", methods=["POST"])
 def analyze(post_id):
-    post = Post.query.get_or_404(post_id)
+    post = db.get_or_404(Post, post_id)
     analysis = analyze_post_fields(
         title=post.title,
         content=post.content,
@@ -83,7 +86,7 @@ def analyze(post_id):
         tags=post.tags,
         category=post.category,
     )
-    save_post_analysis(post, analysis)
+    save_post_analysis(post, analysis, internal_links=related_post_payload(get_related_posts(post)))
     flash("SEO analysis refreshed for this post.", "success")
     return redirect(url_for("posts.detail", post_id=post.id))
 
@@ -112,7 +115,11 @@ def create():
                 tags=post.tags,
                 category=post.category,
             )
-            save_post_analysis(post, analysis)
+            save_post_analysis(
+                post,
+                analysis,
+                internal_links=related_post_payload(get_related_posts(post)),
+            )
             flash("Post created and SEO analysis generated.", "success")
             return redirect(url_for("posts.edit", post_id=post.id))
 
@@ -124,7 +131,7 @@ def create():
 
 @posts_bp.route("/<int:post_id>/edit", methods=["GET", "POST"])
 def edit(post_id):
-    post = Post.query.get_or_404(post_id)
+    post = db.get_or_404(Post, post_id)
     post_form = _post_form_state(post)
 
     if request.method == "POST":
@@ -150,7 +157,11 @@ def edit(post_id):
                 tags=post.tags,
                 category=post.category,
             )
-            save_post_analysis(post, analysis)
+            save_post_analysis(
+                post,
+                analysis,
+                internal_links=related_post_payload(get_related_posts(post)),
+            )
             flash("Post updated and SEO analysis generated.", "success")
             return redirect(url_for("posts.edit", post_id=post.id))
 

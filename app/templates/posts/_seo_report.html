@@ -105,6 +105,28 @@
         </div>
       </div>
 
+      <div class="seo-panel mt-4">
+        <h3 class="h4 mb-3">Internal link opportunities</h3>
+        {% if analysis.internal_links %}
+          <ul class="seo-list">
+            {% for link in analysis.internal_links %}
+              <li>
+                <strong>{{ link.title }}</strong>
+                <span class="text-muted">({{ link.category }})</span>
+                {% if link.shared_tags %}
+                  <span class="text-muted"> shared tags: {{ link.shared_tags | join(', ') }}</span>
+                {% endif %}
+                {% if link.match_strength == 'fallback' %}
+                  <span class="text-muted"> low-confidence fallback</span>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted mb-0">Run analysis to capture internal link suggestions for this draft.</p>
+        {% endif %}
+      </div>
+
       {% if analysis.created_at %}
         <p class="small text-muted mb-0">Latest analysis: {{ analysis.created_at.strftime('%b %d, %Y %H:%M') }}</p>
       {% endif %}

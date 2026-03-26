@@ -10,6 +10,7 @@ from app.services.seo_service import (
     save_seo_report,
     serialize_report,
 )
+from app.services.similarity_service import get_related_posts, related_post_payload
 
 __all__ = [
     "SEOAnalyzer",
@@ -22,4 +23,6 @@ __all__ = [
     "save_post_analysis",
     "save_seo_report",
     "serialize_report",
+    "get_related_posts",
+    "related_post_payload",
 ]
