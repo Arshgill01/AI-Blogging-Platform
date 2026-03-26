@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, redirect, render_template, url_for
 
 from app.models import Post
 from app.services.analytics_service import get_home_snapshot
@@ -23,3 +23,14 @@ def home():
         personalized_recommendations=personalized_recommendations,
         home_snapshot=home_snapshot,
     )
+
+
+@main_bp.route("/dashboard")
+def dashboard_shortcut():
+    return redirect(url_for("analytics.dashboard"))
+
+
+@main_bp.route("/author")
+@main_bp.route("/studio")
+def author_shortcut():
+    return redirect(url_for("posts.create"))

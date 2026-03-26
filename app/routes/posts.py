@@ -85,6 +85,21 @@ def _build_author_similarity_context(post):
     return get_internal_link_suggestions(post, limit=4)
 
 
+def _normalize_dwell_time(raw_value):
+    if raw_value is None:
+        return None
+
+    try:
+        dwell_time = int(float(raw_value))
+    except (TypeError, ValueError):
+        return None
+
+    if dwell_time <= 0:
+        return None
+
+    return min(dwell_time, 60 * 60)
+
+
 def _render_post_form(form_title, post_form, analysis=None, internal_link_suggestions=None):
     return render_template(
         "posts/form.html",
@@ -94,6 +109,11 @@ def _render_post_form(form_title, post_form, analysis=None, internal_link_sugges
         is_edit=bool(getattr(post_form, "id", None)),
         internal_link_suggestions=internal_link_suggestions or [],
     )
+
+
+@posts_bp.route("/")
+def index():
+    return redirect(url_for("main.home"))
 
 
 @posts_bp.route("/<int:post_id>")
@@ -131,7 +151,7 @@ def detail(post_id):
 def record_engagement(post_id):
     post = db.get_or_404(Post, post_id)
     payload = request.get_json(silent=True) or {}
-    dwell_time = payload.get("dwell_time_seconds")
+    dwell_time = _normalize_dwell_time(payload.get("dwell_time_seconds"))
     if dwell_time is None:
         return jsonify({"status": "ignored"}), 202
 
@@ -140,9 +160,13 @@ def record_engagement(post_id):
     return ("", 204)
 
 
-@posts_bp.route("/<int:post_id>/analyze", methods=["POST"])
+@posts_bp.route("/<int:post_id>/analyze", methods=["GET", "POST"])
 def analyze(post_id):
     post = db.get_or_404(Post, post_id)
+    if request.method == "GET":
+        flash("Open the post or author form to run SEO analysis.", "info")
+        return redirect(url_for("posts.detail", post_id=post.id))
+
     internal_link_suggestions = get_internal_link_suggestions(post, limit=4)
     analysis = analyze_post_fields(
         title=post.title,

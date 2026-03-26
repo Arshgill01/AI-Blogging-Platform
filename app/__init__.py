@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from flask import Flask
+from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
 
 
@@ -40,5 +41,14 @@ def create_app(test_config=None):
 
         db.create_all()
         load_seed_data()
+
+    @app.errorhandler(404)
+    def not_found(error):
+        return render_template("errors/404.html"), 404
+
+    @app.errorhandler(500)
+    def internal_server_error(error):
+        db.session.rollback()
+        return render_template("errors/500.html"), 500
 
     return app

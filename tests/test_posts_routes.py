@@ -145,6 +145,56 @@ class PostRoutesTestCase(unittest.TestCase):
 
         self.assertEqual(latest_view_event.dwell_time, 42)
 
+    def test_posts_index_redirects_to_home_listing(self):
+        response = self.client.get("/posts/", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/"))
+
+    def test_get_analyze_route_redirects_back_to_post(self):
+        with self.app.app_context():
+            post = Post.query.filter_by(
+                title="Practical SEO Habits for Small Content Teams"
+            ).first()
+
+        response = self.client.get(f"/posts/{post.id}/analyze", follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Open the post or author form to run SEO analysis.", response.get_data(as_text=True))
+
+    def test_engagement_endpoint_ignores_invalid_dwell_time_payloads(self):
+        with self.app.app_context():
+            post = Post.query.filter_by(
+                title="Why Fast Page Loads Improve Content Engagement"
+            ).first()
+
+        detail_response = self.client.get(f"/posts/{post.id}")
+        self.assertEqual(detail_response.status_code, 200)
+
+        response = self.client.post(
+            f"/posts/{post.id}/engagement",
+            json={"dwell_time_seconds": "not-a-number"},
+        )
+
+        self.assertEqual(response.status_code, 202)
+
+        with self.app.app_context():
+            latest_view_event = (
+                Interaction.query.filter_by(post_id=post.id, event_type="view")
+                .order_by(Interaction.id.desc())
+                .first()
+            )
+
+        self.assertIsNone(latest_view_event.dwell_time)
+
+    def test_missing_route_renders_demo_recovery_page(self):
+        response = self.client.get("/definitely-missing-page")
+
+        self.assertEqual(response.status_code, 404)
+        body = response.get_data(as_text=True)
+        self.assertIn("That page does not exist.", body)
+        self.assertIn("Author Studio", body)
+
 
 if __name__ == "__main__":
     unittest.main()
