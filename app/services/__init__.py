@@ -10,16 +10,30 @@ from app.services.seo_service import (
     save_seo_report,
     serialize_report,
 )
+from app.services.similarity_service import (
+    SimilarityService,
+    build_post_document,
+    get_related_posts,
+    get_related_posts_for_fields,
+    similarity_service,
+    suggest_internal_links,
+)
 
 __all__ = [
     "SEOAnalyzer",
+    "SimilarityService",
     "analyze_post",
     "analyze_post_fields",
     "analyze_post_record",
+    "build_post_document",
     "deserialize_seo_report",
     "get_latest_post_analysis",
     "get_latest_seo_report",
+    "get_related_posts",
+    "get_related_posts_for_fields",
     "save_post_analysis",
     "save_seo_report",
     "serialize_report",
+    "similarity_service",
+    "suggest_internal_links",
 ]
