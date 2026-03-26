@@ -1,3 +1,8 @@
+from app.services.analytics_service import (
+    AnalyticsService,
+    analytics_service,
+    get_dashboard_snapshot,
+)
 from app.services.personalization_service import (
     PersonalizationService,
     ensure_reader_session,
@@ -31,15 +36,18 @@ from app.services.similarity_service import (
 )
 
 __all__ = [
+    "AnalyticsService",
     "PersonalizationService",
     "SEOAnalyzer",
     "SimilarityService",
+    "analytics_service",
     "analyze_post",
     "analyze_post_fields",
     "analyze_post_record",
     "build_post_document",
     "deserialize_seo_report",
     "ensure_reader_session",
+    "get_dashboard_snapshot",
     "get_internal_link_suggestions",
     "get_personalized_recommendations",
     "get_post_similarity_scores",
