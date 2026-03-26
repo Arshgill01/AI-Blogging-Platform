@@ -380,6 +380,13 @@ def _report_payload(report):
         else:
             normalized_keywords.append({"term": str(keyword), "count": None})
 
+    internal_links = []
+    if report.internal_links_json:
+        try:
+            internal_links = json.loads(report.internal_links_json)
+        except json.JSONDecodeError:
+            internal_links = []
+
     return {
         "report_id": report.id,
         "created_at": report.created_at,
@@ -401,7 +408,7 @@ def _report_payload(report):
         "primary_keyword_density": suggestions_payload.get("primary_keyword_density"),
         "keyword_density": {},
         "repeated_terms": [],
-        "internal_links": [],
+        "internal_links": internal_links,
     }
 
 
@@ -454,7 +461,7 @@ def save_seo_report(post, analysis, *, internal_links=None):
     return report
 
 
-def save_post_analysis(post, analysis):
-    report = save_seo_report(post, analysis)
+def save_post_analysis(post, analysis, *, internal_links=None):
+    report = save_seo_report(post, analysis, internal_links=internal_links)
     db.session.commit()
     return report
