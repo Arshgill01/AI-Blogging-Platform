@@ -315,6 +315,29 @@ class SimilarityService:
             candidate_posts=candidate_posts,
         )
 
+    def get_similarity_scores(self, post, *, candidate_posts=None):
+        candidates = list(candidate_posts) if candidate_posts is not None else Post.query.order_by(Post.id.asc()).all()
+        candidates = [candidate for candidate in candidates if candidate.id != post.id]
+        if not candidates:
+            return {}
+
+        corpus = [post, *candidates]
+        vectors, norms = _build_tfidf_vectors(corpus)
+        source_vector = vectors.get(post.id, {})
+        source_norm = norms.get(post.id, 0.0)
+        if not source_vector or not source_norm:
+            return {}
+
+        similarity_scores = {}
+        for candidate in candidates:
+            similarity_scores[candidate.id] = _cosine_similarity(
+                source_vector,
+                source_norm,
+                vectors.get(candidate.id, {}),
+                norms.get(candidate.id, 0.0),
+            )
+        return similarity_scores
+
     def get_related_posts_for_fields(
         self,
         *,
@@ -473,6 +496,10 @@ def get_related_posts_for_fields(
         exclude_post_id=exclude_post_id,
         candidate_posts=candidate_posts,
     )
+
+
+def get_post_similarity_scores(post, *, candidate_posts=None):
+    return similarity_service.get_similarity_scores(post, candidate_posts=candidate_posts)
 
 
 def suggest_internal_links(post, *, limit=5, candidate_posts=None):

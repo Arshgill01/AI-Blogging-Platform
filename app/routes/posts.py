@@ -9,6 +9,12 @@ from app.services.seo_service import (
     get_latest_post_analysis,
     save_post_analysis,
 )
+from app.services.personalization_service import (
+    ensure_reader_session,
+    get_personalized_recommendations,
+    record_post_view,
+    record_recommendation_click,
+)
 from app.services.similarity_service import get_internal_link_suggestions, get_related_posts
 
 
@@ -74,8 +80,17 @@ def _render_post_form(form_title, post_form, analysis=None, internal_link_sugges
 @posts_bp.route("/<int:post_id>")
 def detail(post_id):
     post = db.get_or_404(Post, post_id)
+    session_token = ensure_reader_session()
+    if request.args.get("ref") == "personalized":
+        record_recommendation_click(session_token, post.id)
+    record_post_view(session_token, post.id)
     latest_analysis = get_latest_post_analysis(post)
     related_posts = get_related_posts(post, limit=3)
+    personalized_recommendations = get_personalized_recommendations(
+        session_token,
+        limit=4,
+        exclude_post_id=post.id,
+    )
     internal_link_suggestions = (
         latest_analysis.get("internal_links")
         if latest_analysis and latest_analysis.get("internal_links")
@@ -86,6 +101,7 @@ def detail(post_id):
         post=post,
         latest_analysis=latest_analysis,
         related_posts=related_posts,
+        personalized_recommendations=personalized_recommendations,
         internal_link_suggestions=internal_link_suggestions,
     )
 
