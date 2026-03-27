@@ -22,6 +22,49 @@ WaveBlog AI is a self-contained AI-powered blogging platform built for demo-read
 - Chart.js
 - `textstat`
 
+## Architecture
+
+The application is structured as a single Flask app with route blueprints, service-layer business logic, and a shared SQLite database accessed through SQLAlchemy models.
+
+```mermaid
+flowchart TD
+    U[Users<br/>Author / Reader / Admin]
+    B[Browser Interface<br/>Jinja Templates + Bootstrap<br/>Dashboard visuals via Chart.js]
+    F[Flask App<br/>Routes + Request Flow]
+
+    S1[SEO Service<br/>readability<br/>keyword analysis<br/>scoring]
+    S2[Similarity Service<br/>TF-IDF<br/>cosine similarity<br/>related posts]
+    S3[Personalization Service<br/>session behavior<br/>ranking engine<br/>recommendations]
+    S4[Analytics Service<br/>views / categories / SEO /<br/>recommendation metrics]
+
+    DB[SQLite + SQLAlchemy<br/>posts / sessions / interactions /<br/>SEO reports]
+
+    U --> B
+    B --> F
+
+    F --> S1
+    F --> S2
+    F --> S3
+    F --> S4
+
+    S1 --> DB
+    S2 --> DB
+    S3 --> DB
+    S4 --> DB
+
+    S1 -. internal link context .-> S2
+    S3 -. similarity signals .-> S2
+    S4 -. aggregates stored results .-> S1
+    S4 -. aggregates behavior .-> S3
+```
+
+### Request flow at a glance
+
+- Author actions go through `app/routes/posts.py`, which persists posts and calls the SEO and similarity services for analysis and internal link suggestions.
+- Reader actions go through `app/routes/main.py` and `app/routes/posts.py`, which create anonymous sessions, log interactions, and request personalized recommendations.
+- Dashboard requests go through `app/routes/analytics.py`, which pulls aggregated metrics from the analytics service.
+- Shared persistence lives in `app/models.py`, with seed/demo data loaded from `app/seed.py`.
+
 ## Local setup
 
 1. Create and activate a virtual environment.
