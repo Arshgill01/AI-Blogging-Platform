@@ -54,6 +54,29 @@
       </div>
     </div>
 
+    <div class="reaction-bar my-4">
+      <div class="d-flex align-items-center gap-3">
+        <button
+          class="btn btn-reaction btn-reaction--like {% if user_reaction == 1 %}active{% endif %}"
+          data-post-id="{{ post.id }}"
+          data-value="1"
+          aria-label="Like this post"
+        >
+          <i class="bi bi-heart-fill"></i>
+          <span class="reaction-count">{{ reaction_counts.likes }}</span>
+        </button>
+        <button
+          class="btn btn-reaction btn-reaction--dislike {% if user_reaction == -1 %}active{% endif %}"
+          data-post-id="{{ post.id }}"
+          data-value="-1"
+          aria-label="Dislike this post"
+        >
+          <i class="bi bi-hand-thumbs-down-fill"></i>
+          <span class="reaction-count">{{ reaction_counts.dislikes }}</span>
+        </button>
+      </div>
+    </div>
+
     {% if post.tags %}
       <div class="d-flex align-items-center gap-2 text-muted mb-4 flex-wrap">
         <i class="bi bi-tags-fill text-primary"></i>
@@ -127,6 +150,44 @@
         }
       });
       window.addEventListener("pagehide", sendDwellTime);
+    })();
+
+    (() => {
+      const reactionBar = document.querySelector('.reaction-bar');
+      if (!reactionBar) return;
+
+      const postId = reactionBar.querySelector('[data-post-id]').dataset.postId;
+      const reactUrl = {{ url_for('posts.react', post_id=0) | tojson }}.replace('/0/', `/` + postId + '/');
+
+      reactionBar.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-value]');
+        if (!btn) return;
+
+        const value = parseInt(btn.dataset.value, 10);
+        if (![1, -1].includes(value)) return;
+
+        try {
+          const res = await fetch(reactUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value }),
+          });
+          if (!res.ok) return;
+
+          const data = await res.json();
+          const bar = document.querySelector('.reaction-bar');
+          const likeBtn = bar.querySelector('[data-value="1"]');
+          const dislikeBtn = bar.querySelector('[data-value="-1"]');
+
+          likeBtn.querySelector('.reaction-count').textContent = data.likes;
+          dislikeBtn.querySelector('.reaction-count').textContent = data.dislikes;
+
+          likeBtn.classList.toggle('active', data.user_reaction === 1);
+          dislikeBtn.classList.toggle('active', data.user_reaction === -1);
+        } catch (err) {
+          console.error('Failed to submit reaction:', err);
+        }
+      });
     })();
   </script>
 {% endblock %}

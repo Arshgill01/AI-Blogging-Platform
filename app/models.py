@@ -23,6 +23,7 @@ class Post(db.Model):
 
     seo_reports = db.relationship("SEOReport", back_populates="post", lazy=True)
     interactions = db.relationship("Interaction", back_populates="post", lazy=True)
+    reactions = db.relationship("Reaction", back_populates="post", lazy=True)
 
 
 class VisitorSession(db.Model):
@@ -32,6 +33,7 @@ class VisitorSession(db.Model):
     last_seen = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
     interactions = db.relationship("Interaction", back_populates="visitor_session", lazy=True)
+    reactions = db.relationship("Reaction", back_populates="visitor_session", lazy=True)
 
 
 class Interaction(db.Model):
@@ -62,3 +64,21 @@ class SEOReport(db.Model):
     post = db.relationship("Post", back_populates="seo_reports")
 
     __table_args__ = (UniqueConstraint("post_id", "created_at", name="uq_seo_report_post_created"),)
+
+
+class Reaction(db.Model):
+    __tablename__ = "reaction"
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey("post.id"), nullable=False, index=True)
+    session_token = db.Column(
+        db.String(120), db.ForeignKey("visitor_session.session_token"), nullable=False, index=True
+    )
+    value = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+
+    post = db.relationship("Post", back_populates="reactions")
+    visitor_session = db.relationship("VisitorSession", back_populates="reactions")
+
+    __table_args__ = (
+        UniqueConstraint("post_id", "session_token", name="uq_reaction_per_session"),
+    )

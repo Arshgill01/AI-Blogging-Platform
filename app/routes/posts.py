@@ -15,6 +15,11 @@ from app.services.seo_service import (
     get_latest_post_analysis,
     save_post_analysis,
 )
+from app.services.reaction_service import (
+    get_reaction_counts,
+    get_user_reaction,
+    set_reaction,
+)
 from app.services.similarity_service import get_internal_link_suggestions, get_related_posts
 
 
@@ -136,6 +141,9 @@ def detail(post_id):
         if latest_analysis and latest_analysis.get("internal_links")
         else get_internal_link_suggestions(post, limit=4)
     )
+    reaction_counts = get_reaction_counts(post.id)
+    user_reaction = get_user_reaction(session_token, post.id)
+
     return render_template(
         "posts/detail.html",
         post=post,
@@ -144,6 +152,8 @@ def detail(post_id):
         related_posts=related_posts,
         personalized_recommendations=personalized_recommendations,
         internal_link_suggestions=internal_link_suggestions,
+        reaction_counts=reaction_counts,
+        user_reaction=user_reaction,
     )
 
 
@@ -259,3 +269,23 @@ def edit(post_id):
         analysis=get_latest_post_analysis(post),
         internal_link_suggestions=internal_link_suggestions,
     )
+
+
+@posts_bp.route("/<int:post_id>/react", methods=["POST"])
+def react(post_id):
+    post = db.get_or_404(Post, post_id)
+    payload = request.get_json(silent=True) or {}
+    value = payload.get("value")
+
+    if value not in (1, -1):
+        return jsonify({"error": "Invalid reaction value"}), 400
+
+    session_token = ensure_reader_session()
+    new_value = set_reaction(session_token, post.id, value)
+    counts = get_reaction_counts(post.id)
+
+    return jsonify({
+        "user_reaction": new_value,
+        "likes": counts["likes"],
+        "dislikes": counts["dislikes"],
+    })

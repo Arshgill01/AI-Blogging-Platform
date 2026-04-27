@@ -375,3 +375,56 @@ a:hover {
     grid-template-columns: 1fr;
   }
 }
+
+.reaction-bar {
+  display: flex;
+  justify-content: center;
+}
+
+.reaction-bar .d-flex {
+  gap: 0.75rem;
+}
+
+.btn-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-reaction:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-reaction.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: white;
+}
+
+.btn-reaction--like.active {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.btn-reaction--dislike.active {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn-reaction i {
+  font-size: 1rem;
+}
+
+.reaction-count {
+  font-weight: 600;
+}
